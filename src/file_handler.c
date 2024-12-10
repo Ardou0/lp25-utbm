@@ -77,22 +77,50 @@ void write_log_element(log_element *elt, FILE *file) {
 
 // Fonction pour lister les fichiers dans un répertoire
 void list_files(const char *path) {
+    // Allocate a buffer for the path
+    char *path_buffer = strdup(path);
+    if (!path_buffer) {
+        perror("Error allocating memory");
+        return;
+    }
+
+    // Check if the path ends with a '/' and remove it if it does
+    size_t path_len = strlen(path_buffer);
+    if (path_len > 0 && path_buffer[path_len - 1] == '/') {
+        path_buffer[path_len - 1] = '\0';
+    }
+
     struct dirent *entry;
-    DIR *dir = opendir(path);
+    DIR *dir = opendir(path_buffer);
 
     if (!dir) {
         perror("Error opening directory");
+        free(path_buffer);
         return;
     }
 
     while ((entry = readdir(dir))) {
         if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-            printf("%s/%s\n", path, entry->d_name);
+            char full_path[1024];
+            snprintf(full_path, sizeof(full_path), "%s/%s", path_buffer, entry->d_name);
+
+            struct stat path_stat;
+            stat(full_path, &path_stat);
+
+            if (S_ISDIR(path_stat.st_mode)) {
+                // If it's a directory, call list_files recursively
+                list_files(full_path);
+            } else {
+                // If it's a file, print its path
+                printf("%s\n", full_path);
+            }
         }
     }
 
     closedir(dir);
+    free(path_buffer);
 }
+
 
 // Fonction pour copier un fichier
 void copy_file(const char *src, const char *dest) {
