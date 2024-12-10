@@ -113,7 +113,21 @@ int main(int argc, char *argv[]) {
         if (verbose) printf("Starting restore from '%s' to '%s'\n", source_path, dest_path);
         // Appel à la fonction de restauration (à implémenter)
     } else if (mode == LIST_BACKUPS) {
-        if (verbose) printf("Listing backups...\n");
+        if (dest_path != NULL) {
+            if (verbose) printf("Listing backups...\n");
+            file_list_t files = { .head = NULL, .tail = NULL };
+            list_files(dest_path, &files, 0);
+            file_element *current = files.head;
+            while (current) {
+                printf("%s\n", current->path);
+                current = current->next;
+            }
+            free_file_list(&files);
+        } else {
+            fprintf(stderr, "Error: --dest is required for --list-backups.\n");
+            return EXIT_FAILURE;
+        }
+
         // Appel à la fonction de listing des sauvegardes (à implémenter)
     }
 

@@ -69,14 +69,14 @@ void update_backup_log(const char *logfile, log_t *logs) {
 // Fonction permettant d'écrire un élément log dans le fichier .backup_log
 void write_log_element(log_element *elt, FILE *file) {
     fprintf(file, "%s,", elt->path);
+    fprintf(file, "%s,", elt->date);
     for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
-        fprintf(file, "%02x", elt->md5[i]);
+        fprintf(file, "%02x\n", elt->md5[i]);
     }
-    fprintf(file, ",%s\n", elt->date);
 }
 
-// Fonction pour lister les fichiers dans un répertoire
-void list_files(const char *path) {
+// Fonction pour lister les fichiers dans un répertoire et les ajouter à une liste chaînée
+void list_files(const char *path, file_list_t *file_list, int recursive) {
     // Allocate a buffer for the path
     char *path_buffer = strdup(path);
     if (!path_buffer) {
@@ -106,19 +106,73 @@ void list_files(const char *path) {
 
             struct stat path_stat;
             stat(full_path, &path_stat);
-
-            if (S_ISDIR(path_stat.st_mode)) {
+            if (S_ISDIR(path_stat.st_mode) && recursive) {
                 // If it's a directory, call list_files recursively
-                list_files(full_path);
+                list_files(full_path, file_list, recursive);
             } else {
-                // If it's a file, print its path
-                printf("%s\n", full_path);
+                // If it's a file, add it to the file list
+                file_element *new_elt = malloc(sizeof(file_element));
+                if (!new_elt) {
+                    perror("Memory allocation failed");
+                    continue;
+                }
+                if(!recursive) {
+                    new_elt->path = strdup(entry->d_name);
+                } else {
+                    new_elt->path = strdup(full_path);
+                }
+                new_elt->next = NULL;
+
+                if (file_list->tail) {
+                    file_list->tail->next = new_elt;
+                } else {
+                    file_list->head = new_elt;
+                }
+                file_list->tail = new_elt;
             }
         }
     }
 
     closedir(dir);
     free(path_buffer);
+}
+
+// Fonction pour libérer une liste d'index de fichiers
+void free_file_list(file_list_t *file_list) {
+    file_element *current = file_list->head;
+    while (current) {
+        file_element *next = current->next;
+        free(current->path);
+        free(current);
+        current = next;
+    }
+    file_list->head = NULL;
+    file_list->tail = NULL;
+}
+
+// Fonction pour libérer une liste de logs
+void free_log_list(log_t *logs) {
+    log_element *current = logs->head;
+    while (current) {
+        log_element *next = current->next;
+
+        // Libérer la mémoire allouée pour les champs dynamiques
+        if (current->path) {
+            free((void *)current->path); // Cast to (void *) to avoid const warning
+        }
+        if (current->date) {
+            free(current->date);
+        }
+
+        // Libérer la mémoire allouée pour l'élément lui-même
+        free(current);
+
+        current = next;
+    }
+
+    // Réinitialiser les pointeurs de la liste
+    logs->head = NULL;
+    logs->tail = NULL;
 }
 
 
