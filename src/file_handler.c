@@ -77,14 +77,14 @@ void write_log_element(log_element *elt, FILE *file) {
 
 // Fonction pour lister les fichiers dans un répertoire et les ajouter à une liste chaînée
 void list_files(const char *path, file_list_t *file_list, int recursive) {
-    // Allocate a buffer for the path
+    // Buffer pour le chemin
     char *path_buffer = strdup(path);
     if (!path_buffer) {
         perror("Error allocating memory");
         return;
     }
 
-    // Check if the path ends with a '/' and remove it if it does
+    // Si le path contient un '/' à la fin, le retirer
     size_t path_len = strlen(path_buffer);
     if (path_len > 0 && path_buffer[path_len - 1] == '/') {
         path_buffer[path_len - 1] = '\0';
@@ -102,15 +102,16 @@ void list_files(const char *path, file_list_t *file_list, int recursive) {
     while ((entry = readdir(dir))) {
         if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
             char full_path[1024];
-            snprintf(full_path, sizeof(full_path), "%s/%s", path_buffer, entry->d_name);
+            
+            snprintf(full_path, sizeof(full_path), "%s", entry->d_name);
 
             struct stat path_stat;
             stat(full_path, &path_stat);
             if (S_ISDIR(path_stat.st_mode) && recursive) {
-                // If it's a directory, call list_files recursively
+                // Si c'est un dossier, appeler récursivement la fonction
                 list_files(full_path, file_list, recursive);
             } else {
-                // If it's a file, add it to the file list
+                // Si c'est un fichier, l'ajouter à l'index des fichiers
                 file_element *new_elt = malloc(sizeof(file_element));
                 if (!new_elt) {
                     perror("Memory allocation failed");
@@ -158,7 +159,7 @@ void free_log_list(log_t *logs) {
 
         // Libérer la mémoire allouée pour les champs dynamiques
         if (current->path) {
-            free((void *)current->path); // Cast to (void *) to avoid const warning
+            free((void *)current->path); // Appel void pour eviter tout warning
         }
         if (current->date) {
             free(current->date);

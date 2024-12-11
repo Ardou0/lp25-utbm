@@ -9,6 +9,9 @@
 
 // Taille d'un chunk (4096 octets)
 #define CHUNK_SIZE 4096
+// Taille d'un chunk qui contient la position de référence d'un chunk
+#define SUB_CHUNK_SIZE 100
+
 
 // Taille de la table de hachage qui contiendra les chunks
 // dont on a déjà calculé le MD5 pour effectuer les comparaisons
@@ -29,12 +32,14 @@ typedef struct {
 
 // Fonction de hachage MD5 pour l'indexation dans la table de hachage
 unsigned int hash_md5(unsigned char *md5);
-// Fonction pour calculer le MD5 d'un chunk
+// Fonction pour calculer le MD5 d'un chunk 
 void compute_md5(void *data, size_t len, unsigned char *md5_out);
 // Fonction permettant de chercher un MD5 dans la table de hachage
 int find_md5(Md5Entry *hash_table, unsigned char *md5);
 // Fonction pour ajouter un MD5 dans la table de hachage
 void add_md5(Md5Entry *hash_table, unsigned char *md5, int index);
+// Initialise un talbeau de hash
+void init_hash_table(Md5Entry *hash_table);
 // Fonction pour convertir un fichier non dédupliqué en tableau de chunks
 void deduplicate_file(FILE *file, Chunk *chunks, Md5Entry *hash_table);
 // Fonction permettant de charger un fichier dédupliqué en table de chunks
