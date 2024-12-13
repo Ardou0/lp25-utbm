@@ -52,13 +52,16 @@ void add_md5(Md5Entry *hash_table, unsigned char *md5, int index) {
     hash_table[hash].index = index;
 }
 
-void init_hash_table(Md5Entry *hash_table) {
-    for (int i = 0; i < HASH_TABLE_SIZE; i++) {
-        hash_table[i].index = -1;
+void init_hash_table(Md5Entry* hash_table, size_t num_chunks) {
+    for (size_t i = 0; i < num_chunks; i++) {
+        memset(hash_table[i].md5, 0, MD5_DIGEST_LENGTH); // Initialize md5 to zeros
+        hash_table[i].index = -1; // Initialize index to -1 (or any default value)
     }
 }
 
-void deduplicate_file(FILE *file, Chunk *chunks, Md5Entry *hash_table) {
+
+
+void deduplicate_file(FILE *file, Chunk **chunks, Md5Entry *hash_table) {
     int chunk_index = 0;
     unsigned char buffer[CHUNK_SIZE];
     size_t bytes_read;
@@ -71,17 +74,17 @@ void deduplicate_file(FILE *file, Chunk *chunks, Md5Entry *hash_table) {
         if (index == -1) {
             // Nouveau chunk, ajouter à la table de hachage
             add_md5(hash_table, md5, chunk_index);
-            chunks[chunk_index].data = malloc(bytes_read);
-            memcpy(chunks[chunk_index].data, buffer, bytes_read);
-            memcpy(chunks[chunk_index].md5, md5, MD5_DIGEST_LENGTH);
+            chunks[chunk_index]->data = malloc(bytes_read);
+            memcpy(chunks[chunk_index]->data, buffer, bytes_read);
+            memcpy(chunks[chunk_index]->md5, md5, MD5_DIGEST_LENGTH);
             chunk_index++;
         } else {
             // Chunk déjà présent, créer un sub_chunk de référence
             unsigned char sub_chunk[SUB_CHUNK_SIZE];
             sub_chunk[0] = 0; // Premier bit à 0 pour indiquer un sub_chunk
-            snprintf((char *)sub_chunk + 1, SUB_CHUNK_SIZE - 1, "%d", index);
-            chunks[chunk_index].data = malloc(SUB_CHUNK_SIZE);
-            memcpy(chunks[chunk_index].data, sub_chunk, SUB_CHUNK_SIZE);
+            memcpy(sub_chunk + 1, &index, sizeof(int)); // Stocker l'index en binaire
+            chunks[chunk_index]->data = malloc(SUB_CHUNK_SIZE);
+            memcpy(chunks[chunk_index]->data, sub_chunk, SUB_CHUNK_SIZE);
             chunk_index++;
         }
     }
@@ -101,9 +104,8 @@ void undeduplicate_file(FILE *file, Chunk **chunks, int *chunk_count) {
             chunk_index++;
         } else {
             // Sub_chunk de référence
-            char ref_index_str[SUB_CHUNK_SIZE];
-            memcpy(ref_index_str, buffer + 1, SUB_CHUNK_SIZE - 1);
-            int ref_index = atoi(ref_index_str);
+            int ref_index;
+            memcpy(&ref_index, buffer + 1, sizeof(int)); // Lire les 4 octets suivants comme un entier
 
             // Remplacer par les données du chunk référencé
             chunks[chunk_index] = malloc(sizeof(Chunk));
@@ -114,3 +116,4 @@ void undeduplicate_file(FILE *file, Chunk **chunks, int *chunk_count) {
     }
     *chunk_count = chunk_index;
 }
+

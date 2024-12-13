@@ -5,7 +5,8 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/stat.h>
-#include <openssl/md5.h>
+#include <openssl/evp.h>
+#include "utilities.h"
 #include "file_handler.h"
 #include "deduplication.h"
 
@@ -71,8 +72,9 @@ void write_log_element(log_element *elt, FILE *file) {
     fprintf(file, "%s,", elt->path);
     fprintf(file, "%s,", elt->date);
     for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
-        fprintf(file, "%02x\n", elt->md5[i]);
+        fprintf(file, "%02x", elt->md5[i]);
     }
+    fprintf(file, "\n");
 }
 
 // Fonction pour lister les fichiers dans un répertoire et les ajouter à une liste chaînée
@@ -85,10 +87,7 @@ void list_files(const char *path, file_list_t *file_list, int recursive) {
     }
 
     // Si le path contient un '/' à la fin, le retirer
-    size_t path_len = strlen(path_buffer);
-    if (path_len > 0 && path_buffer[path_len - 1] == '/') {
-        path_buffer[path_len - 1] = '\0';
-    }
+    remove_trailing_slash(path_buffer);
 
     struct dirent *entry;
     DIR *dir = opendir(path_buffer);
@@ -101,12 +100,19 @@ void list_files(const char *path, file_list_t *file_list, int recursive) {
 
     while ((entry = readdir(dir))) {
         if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-            char full_path[1024];
-            
-            snprintf(full_path, sizeof(full_path), "%s", entry->d_name);
+            char *full_path = build_full_path(path, entry->d_name);
+            if (!full_path) {
+                perror("Error building full path");
+                continue;
+            }
 
             struct stat path_stat;
-            stat(full_path, &path_stat);
+            if (stat(full_path, &path_stat) == -1) {
+                perror("Error getting file status");
+                free(full_path);
+                continue;
+            }
+
             if (S_ISDIR(path_stat.st_mode) && recursive) {
                 // Si c'est un dossier, appeler récursivement la fonction
                 list_files(full_path, file_list, recursive);
@@ -115,13 +121,10 @@ void list_files(const char *path, file_list_t *file_list, int recursive) {
                 file_element *new_elt = malloc(sizeof(file_element));
                 if (!new_elt) {
                     perror("Memory allocation failed");
+                    free(full_path);
                     continue;
                 }
-                if(!recursive) {
-                    new_elt->path = strdup(entry->d_name);
-                } else {
-                    new_elt->path = strdup(full_path);
-                }
+                new_elt->path = full_path;
                 new_elt->next = NULL;
 
                 if (file_list->tail) {
@@ -159,7 +162,7 @@ void free_log_list(log_t *logs) {
 
         // Libérer la mémoire allouée pour les champs dynamiques
         if (current->path) {
-            free((void *)current->path); // Appel void pour eviter tout warning
+            free((void *)current->path); // Appel void pour éviter tout warning
         }
         if (current->date) {
             free(current->date);
@@ -175,7 +178,6 @@ void free_log_list(log_t *logs) {
     logs->head = NULL;
     logs->tail = NULL;
 }
-
 
 // Fonction pour copier un fichier
 void copy_file(const char *src, const char *dest) {
