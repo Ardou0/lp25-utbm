@@ -68,13 +68,22 @@ void update_backup_log(const char *logfile, log_t *logs) {
 }
 
 // Fonction permettant d'écrire un élément log dans le fichier .backup_log
-void write_log_element(log_element *elt, FILE *file) {
-    fprintf(file, "%s,", elt->path);
-    fprintf(file, "%s,", elt->date);
-    for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
-        fprintf(file, "%02x", elt->md5[i]);
+void write_log_element(log_element* element, FILE* log_file) {
+    if (element == NULL || log_file == NULL) {
+        return;
     }
-    fprintf(file, "\n");
+
+    printf("%s,%s,%s\n", element->path, element->date, element->md5);
+    // Vérifiez que les chaînes de caractères sont correctement initialisées
+    if (element->path == NULL || element->date == NULL || element->md5 == NULL) {
+        fprintf(stderr, "Invalid log element\n");
+        return;
+    }
+
+    // Écrire les éléments dans le fichier de log
+    fprintf(log_file, "%s,", element->path);
+    fprintf(log_file, "%s,", element->date);
+    fprintf(log_file, "%s\n", element->md5);
 }
 
 // Fonction pour lister les fichiers dans un répertoire et les ajouter à une liste chaînée
@@ -135,6 +144,7 @@ void list_files(const char *path, file_list_t *file_list, int recursive) {
                 }
                 file_list->tail = new_elt;
             }
+            free(full_path);
         }
     }
 

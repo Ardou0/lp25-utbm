@@ -17,7 +17,7 @@ char* get_last_modification_date(const char *filepath);
 
 //calcule le md5 d'un fichier
 //utile pour backup_manager
-void get_md5(const char *filepath, char *md5_hex);
+void get_md5(const char *filepath, unsigned char *md5_hex);
 
 // Fonction pour convertir une chaîne de caractères en structure tm
 //utile pour backup_manager

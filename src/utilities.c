@@ -54,7 +54,7 @@ char* get_last_modification_date(const char *filepath) {
     }
 
     // Allouer de la mémoire pour la chaîne de caractères de la date
-    char *date_str = (char *)malloc(sizeof(char) * 40); // "YYYY-MM-DD-hh:mm\0"
+    char *date_str = (char *)malloc(sizeof(char) * 60); // "YYYY-MM-DD-hh:mm\0"
     if (date_str == NULL) {
         perror("Erreur lors de l'allocation de mémoire");
         return NULL;
@@ -66,10 +66,11 @@ char* get_last_modification_date(const char *filepath) {
             timeinfo->tm_hour, timeinfo->tm_min);
 
     return date_str;
+    
 }
 
 //calcule le md5 d'un fichier
-void get_md5(const char *filepath, char *md5_hex) {
+void get_md5(const char *filepath, unsigned char *md5_hex) {
     
     // Open the file to read its data
     FILE *file = fopen(filepath, "rb");
@@ -99,7 +100,7 @@ void get_md5(const char *filepath, char *md5_hex) {
     }
     fclose(file);
     // Calculate the MD5 using compute_md5
-    compute_md5(buffer, file_size, (unsigned char *)md5_hex);
+    compute_md5(buffer, file_size, md5_hex);
     free(buffer);
 }
 
