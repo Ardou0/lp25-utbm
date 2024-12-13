@@ -124,7 +124,8 @@ void list_files(const char *path, file_list_t *file_list, int recursive) {
                     free(full_path);
                     continue;
                 }
-                new_elt->path = full_path;
+                //new_elt->path = entry->d_name;
+                new_elt->path = strdup(entry->d_name);
                 new_elt->next = NULL;
 
                 if (file_list->tail) {

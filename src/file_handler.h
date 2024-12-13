@@ -6,7 +6,7 @@
 
 // Structure pour une ligne du fichier log
 typedef struct log_element {
-    const char *path; // Chemin du fichier/dossier
+    char *path; // Chemin du fichier/dossier
     unsigned char md5[MD5_DIGEST_LENGTH]; // MD5 du fichier dédupliqué
     char *date; // Date de dernière modification
     struct log_element *next;

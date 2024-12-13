@@ -113,6 +113,7 @@ void create_backup(const char* source_dir, const char* backup_dir) {
                 return;
             }
 
+            printf("%s", temporary->path);
             char* file_source_path = build_full_path(source_dir_copy, temporary->path);
             if (!file_source_path) {
                 perror("Failed to build full path");
@@ -124,7 +125,7 @@ void create_backup(const char* source_dir, const char* backup_dir) {
             char md5_hex[2 * MD5_DIGEST_LENGTH + 1] = { 0 };
 
             get_md5(file_source_path, md5_hex);
-            new_elt->path = build_full_path(backup_dir_copy, temporary->path);
+            new_elt->path = build_full_path(full_backup_path, temporary->path);
             if (!new_elt->path) {
                 perror("Failed to build full path for backup");
                 free(new_elt);
@@ -135,6 +136,7 @@ void create_backup(const char* source_dir, const char* backup_dir) {
             }
             new_elt->date = get_last_modification_date(file_source_path);
             memcpy(new_elt->md5, md5_hex, strlen(md5_hex) + 1);
+            printf("%s\n%s\n", md5_hex, new_elt->md5)
             new_elt->next = NULL;
             new_elt->prev = tablog.tail;
             if (tablog.tail) {
@@ -155,7 +157,8 @@ void create_backup(const char* source_dir, const char* backup_dir) {
         // Créer le fichier .backup_log
 
         //snprintf(log_file_path, sizeof(log_file_path), "%s/.backup_log", full_backup_path);
-        log_file = fopen(build_full_path(full_backup_path, ".backup_log"), "w");
+        char *log_file_path = build_full_path(backup_dir_copy, ".backup_log");
+        log_file = fopen(log_file_path, "w");
         if (!log_file) {
             perror("Erreur lors de la création du fichier .backup_log");
             free(source_dir_copy);
@@ -173,14 +176,17 @@ void create_backup(const char* source_dir, const char* backup_dir) {
         }
         printf("Sauvegarde effectuée. Tous les fichiers sont sauvegardés et l'index est dans .backup_log.\n");
         fclose(log_file);
-
-        // Free the log list
-        while (tablog.head != NULL) {
-            log_element* temp = tablog.head;
-            tablog.head = tablog.head->next;
-            free((void*)temp->path); // Cast to void* to avoid discarding const qualifier
-            free(temp);
+        free(log_file_path);
+        log_element* clearLog = tablog.head; 
+        while (clearLog != NULL)
+        {
+            free(clearLog->date);
+            free(clearLog->md5);
+            free(clearLog->path);
+            clearLog = clearLog->next;
+            free(clearLog->prev);
         }
+        free_file_list(&tablist);
     }
     else {
         log_t backup_log = { .head = NULL, .tail = NULL };

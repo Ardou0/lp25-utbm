@@ -74,6 +74,7 @@ void deduplicate_file(FILE *file, Chunk **chunks, Md5Entry *hash_table) {
         if (index == -1) {
             // Nouveau chunk, ajouter à la table de hachage
             add_md5(hash_table, md5, chunk_index);
+            chunks[chunk_index] = malloc(sizeof(Chunk)); // Allocate memory for the chunk
             chunks[chunk_index]->data = malloc(bytes_read);
             memcpy(chunks[chunk_index]->data, buffer, bytes_read);
             memcpy(chunks[chunk_index]->md5, md5, MD5_DIGEST_LENGTH);
@@ -83,12 +84,14 @@ void deduplicate_file(FILE *file, Chunk **chunks, Md5Entry *hash_table) {
             unsigned char sub_chunk[SUB_CHUNK_SIZE];
             sub_chunk[0] = 0; // Premier bit à 0 pour indiquer un sub_chunk
             memcpy(sub_chunk + 1, &index, sizeof(int)); // Stocker l'index en binaire
+            chunks[chunk_index] = malloc(sizeof(Chunk)); // Allocate memory for the chunk
             chunks[chunk_index]->data = malloc(SUB_CHUNK_SIZE);
             memcpy(chunks[chunk_index]->data, sub_chunk, SUB_CHUNK_SIZE);
             chunk_index++;
         }
     }
 }
+
 
 void undeduplicate_file(FILE *file, Chunk **chunks, int *chunk_count) {
     int chunk_index = 0;
