@@ -106,6 +106,7 @@ int main(int argc, char *argv[]) {
         if (verbose) printf("Starting backup from '%s' to '%s'\n", source_path, dest_path);
         // Appel à la fonction de sauvegarde (à implémenter)
         create_backup(source_path, dest_path);
+        printf("Fini\n");
     } else if (mode == RESTORE) {
         if (source_path == NULL || dest_path == NULL) {
             fprintf(stderr, "Error: --source and --dest are required for --restore.\n");

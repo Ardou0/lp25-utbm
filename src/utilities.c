@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 // Fonction pour vérifier si un répertoire en local est accessible
-int is_directory_accessible(const char *path) {
+int is_directory_accessible(const char* path) {
     struct stat sb;
     // Vérifie si le chemin existe et est un répertoire
     if (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode)) {
@@ -19,14 +19,14 @@ int is_directory_accessible(const char *path) {
 }
 
 // Fonction pour construire le chemin complet d'un fichier
-char* build_full_path(const char *dir, const char *relative_path) {
+char* build_full_path(const char* dir, const char* relative_path) {
     // Calculer la longueur totale du chemin complet
     size_t source_dir_len = strlen(dir);
     size_t relative_path_len = strlen(relative_path);
     size_t total_len = source_dir_len + relative_path_len + 2; // +1 pour le '/' et +1 pour le '\0'
 
     // Allouer de la mémoire pour le chemin complet
-    char *full_path = (char *)malloc(total_len);
+    char* full_path = (char*)malloc(total_len);
     if (full_path == NULL) {
         perror("Erreur lors de l'allocation de mémoire");
         return NULL;
@@ -39,7 +39,7 @@ char* build_full_path(const char *dir, const char *relative_path) {
 }
 
 // Fonction pour obtenir la dernière date de modification d'un fichier
-char* get_last_modification_date(const char *filepath) {
+char* get_last_modification_date(const char* filepath) {
     struct stat fileStat;
     if (stat(filepath, &fileStat) < 0) {
         perror("Erreur lors de l'obtention des informations du fichier");
@@ -47,33 +47,34 @@ char* get_last_modification_date(const char *filepath) {
     }
 
     // Convertir le temps de modification en une structure tm
-    struct tm *timeinfo = localtime(&fileStat.st_mtime);
+    struct tm* timeinfo = localtime(&fileStat.st_mtime);
     if (timeinfo == NULL) {
         perror("Erreur lors de la conversion du temps");
         return NULL;
     }
 
     // Allouer de la mémoire pour la chaîne de caractères de la date
-    char *date_str = (char *)malloc(sizeof(char) * 60); // "YYYY-MM-DD-hh:mm\0"
+    // Le format est "\0", ce qui fait 17 caractères
+    char* date_str = (char*)malloc((strlen("YYYY-MM-DD-hh:mm") + 1) * sizeof(char));
     if (date_str == NULL) {
         perror("Erreur lors de l'allocation de mémoire");
         return NULL;
     }
-
     // Formater la date dans le format YYYY-MM-DD-hh:mm
-    sprintf(date_str, "%04d-%02d-%02d-%02d:%02d",
-            timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday,
-            timeinfo->tm_hour, timeinfo->tm_min);
-
-    return date_str;
+    if (strftime(date_str, 17, "%Y-%m-%d-%H:%M", timeinfo) == 0) {
+        perror("Erreur lors du formatage de la date");
+        free(date_str);
+        return NULL;
+    }
     
+    return date_str;
 }
 
 //calcule le md5 d'un fichier
-void get_md5(const char *filepath, unsigned char *md5_hex) {
-    
+void get_md5(const char* filepath, unsigned char* md5_hex) {
+
     // Open the file to read its data
-    FILE *file = fopen(filepath, "rb");
+    FILE* file = fopen(filepath, "rb");
     if (!file) {
         perror("Erreur lors de l'ouverture du fichier pour le calcul du MD5");
         return;
@@ -84,7 +85,7 @@ void get_md5(const char *filepath, unsigned char *md5_hex) {
     size_t file_size = ftell(file);
     rewind(file);
 
-    void *buffer = malloc(file_size);
+    void* buffer = malloc(file_size);
     if (!buffer) {
         fclose(file);
         perror("Erreur d'allocation mémoire pour le calcul du MD5");
@@ -106,12 +107,12 @@ void get_md5(const char *filepath, unsigned char *md5_hex) {
 
 
 // Fonction pour convertir une chaîne de caractères en structure tm
-int parse_date(const char *date_str, struct tm *tm_info) {
+int parse_date(const char* date_str, struct tm* tm_info) {
     if (sscanf(date_str, "%4d-%2d-%2d-%2d:%2d",
-               &tm_info->tm_year, &tm_info->tm_mon, &tm_info->tm_mday,
-               &tm_info->tm_hour, &tm_info->tm_min) != 5) {
+        &tm_info->tm_year, &tm_info->tm_mon, &tm_info->tm_mday,
+        &tm_info->tm_hour, &tm_info->tm_min) != 5) {
         return -1; // Échec de la conversion
-               }
+    }
     tm_info->tm_year -= 1900; // tm_year est le nombre d'années depuis 1900
     tm_info->tm_mon -= 1;     // tm_mon est le mois de l'année (0-11)
     tm_info->tm_sec = 0;      // Initialiser les secondes à 0
@@ -120,7 +121,7 @@ int parse_date(const char *date_str, struct tm *tm_info) {
 }
 
 // Fonction pour comparer deux dates
-int compare_dates(const char *date1, const char *date2) {
+int compare_dates(const char* date1, const char* date2) {
     struct tm tm1, tm2;
     time_t time1, time2;
 
@@ -134,14 +135,16 @@ int compare_dates(const char *date1, const char *date2) {
 
     if (time1 < time2) {
         return -1;
-    } else if (time1 > time2) {
+    }
+    else if (time1 > time2) {
         return 1;
-    } else {
+    }
+    else {
         return 0;
     }
 }
 
-void remove_trailing_slash(char *path) {
+void remove_trailing_slash(char* path) {
     size_t len = strlen(path);
     if (len > 0 && path[len - 1] == '/') {
         path[len - 1] = '\0';

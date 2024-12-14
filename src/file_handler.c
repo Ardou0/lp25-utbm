@@ -34,7 +34,7 @@ log_t read_backup_log(const char *logfile) {
         for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
             sscanf(&md5_hex[i * 2], "%02hhx", &new_elt->md5[i]);
         }
-        new_elt->date = strdup(strtok(NULL, ","));
+        strcpy(new_elt->date, strtok(NULL, ","));
         new_elt->next = NULL;
         new_elt->prev = logs.tail;
 
@@ -73,7 +73,6 @@ void write_log_element(log_element* element, FILE* log_file) {
         return;
     }
 
-    printf("%s,%s,%s\n", element->path, element->date, element->md5);
     // Vérifiez que les chaînes de caractères sont correctement initialisées
     if (element->path == NULL || element->date == NULL || element->md5 == NULL) {
         fprintf(stderr, "Invalid log element\n");
@@ -174,9 +173,6 @@ void free_log_list(log_t *logs) {
         // Libérer la mémoire allouée pour les champs dynamiques
         if (current->path) {
             free((void *)current->path); // Appel void pour éviter tout warning
-        }
-        if (current->date) {
-            free(current->date);
         }
 
         // Libérer la mémoire allouée pour l'élément lui-même

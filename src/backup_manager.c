@@ -137,7 +137,7 @@ void create_backup(const char* source_dir, const char* backup_dir) {
                 free(backup_dir_copy);
                 return;
             }
-            unsigned char md5_hex[2 * MD5_DIGEST_LENGTH + 1] = { 0 };
+            unsigned char md5_hex[MD5_DIGEST_LENGTH] = { 0 };
 
             get_md5(file_source_path, md5_hex);
             char* log_element_path = build_full_path(full_backup_path, temporary->path);
@@ -151,11 +151,12 @@ void create_backup(const char* source_dir, const char* backup_dir) {
                 return;
             }
             char* last_date = get_last_modification_date(file_source_path);
-            new_elt->date = last_date;
-            
-            memcpy(new_elt->md5, md5_hex, sizeof(md5_hex));
+            strcpy(new_elt->date, last_date);
+            printf("%s\n", new_elt->date);
+            memcpy(new_elt->md5, md5_hex, MD5_DIGEST_LENGTH * 2 + 1);
             new_elt->next = NULL;
             new_elt->prev = tablog.tail;
+            
             if (tablog.tail) {
                 tablog.tail->next = new_elt;
             }
@@ -174,23 +175,19 @@ void create_backup(const char* source_dir, const char* backup_dir) {
 
 
         // Pointeur sur la liste tablog, pour tout écrire dans backup.log
-        log_element* search = tablog.head;
-        while (search != NULL) {
-            write_log_element(search, log_file);
-            search = search->next;
+        log_element *search_elt = tablog.head;
+        while (search_elt != NULL) {
+            printf("%s\n", search_elt->date);
+            fprintf(log_file, "%s,%s,%s\n", search_elt->path, search_elt->date, search_elt->md5);
+            
+            //write_log_element(search_elt, log_file);
+            search_elt = search_elt->next;
         }
         printf("Sauvegarde effectuée. Tous les fichiers sont sauvegardés et l'index est dans .backup_log.\n");
         fclose(log_file);
         free(log_file_path);
-        log_element* clearLog = tablog.head;
-        while (clearLog != NULL)
-        {
-            free(clearLog->date);
-            free(clearLog->md5);
-            free(clearLog->path);
-            clearLog = clearLog->next;
-            free(clearLog->prev);
-        }
+        
+        free_log_list(&tablog);
         free_file_list(&tablist);
     }
     else {
@@ -321,6 +318,7 @@ void backup_file(const char* filename, const char* source_path, char* full_backu
     free(tab_chunk);
     clean_hash_table(hash_table);
     fclose(source_file);
+    printf("Fichier saved\n");
 }
 
 
