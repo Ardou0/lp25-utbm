@@ -176,7 +176,13 @@ void create_backup(const char* source_dir, const char* backup_dir) {
         }
         printf("Sauvegarde effectuée. Tous les fichiers sont sauvegardés et l'index est dans .backup_log.\n");
         fclose(log_file);
+        char * full_backup_log_path = build_full_path(full_backup_path, ".backup_log");
+        if (copy_file(log_file_path, full_backup_log_path) != 0) {
+            printf("Le fichier des logs n'a pas été dupliquer");
+        };
         free(log_file_path);
+        free(full_backup_log_path);
+
 
         free_log_list(&tablog);
         free_file_list(&tablist);
@@ -325,7 +331,7 @@ void create_backup(const char* source_dir, const char* backup_dir) {
 
 // Fonction permettant d'enregistrer dans un fichier le tableau de chunk dédupliqué
 void write_backup_file(const char* output_filename, Chunk** chunks, int chunk_count) {
-    FILE* file = fopen(output_filename, "wb");
+    FILE* file = fopen(output_filename, "w+b");
     if (file == NULL) {
         perror("Failed to open output file");
         return;
@@ -407,6 +413,7 @@ void backup_file(const char* filename, const char* source_path, char* full_backu
 
     write_backup_file(backup_path, tab_chunk, num_chunks);
 
+    printf("|%s saved\n", filename_source_path);
     // Free allocated memory
     free(filename_source_path);
     free(backup_path);
@@ -417,13 +424,133 @@ void backup_file(const char* filename, const char* source_path, char* full_backu
     free(tab_chunk);
     clean_hash_table(hash_table);
     fclose(source_file);
-    printf("Fichier saved\n");
 }
 
+//
+void restore_backup(const char* backup_id, const char* restore_dir) {
+    // Vérifier l'accessibilité du répertoire comme dans create_backup 
+    char* backup_id_copy = strdup(backup_id);
+    char* restore_dir_copy = strdup(restore_dir);
+    remove_trailing_slash(backup_id_copy);
+    remove_trailing_slash(restore_dir_copy);
+    if (!is_directory_accessible(restore_dir)) {
+        fprintf(stderr, "Le répertoire de restauration '%s' n'est pas accessible.\n", restore_dir);
+        return;
+    }
 
-// Fonction permettant de lister les différentes sauvegardes présentes dans la destination
+    // Lire le backup_log comme dans create_backup
+    char* backup_log_path = build_full_path(backup_id, ".backup_log");
+    if (!backup_log_path) {
+
+        fprintf(stderr, "Erreur lors de la construction du chemin du fichier log\n");
+        return;
+
+    }
+
+    log_t backup_log = read_backup_log(backup_log_path);
+    log_element* current = backup_log.head;
+
+    while (current) {
+        // Construire les chemins comme dans backup_file
+        char *file_path = cut_after_first_slash(current->path);
+        char* source_path = build_full_path(backup_id_copy, file_path);
+        char* dest_path = build_full_path(restore_dir_copy, file_path);
+
+        printf("%s\n", dest_path);
+        if (!source_path || !dest_path) {
+            free(source_path);
+            free(dest_path);
+            continue;
+        }
+
+        // Créer les répertoires intermédiaires comme dans backup_file
+        create_intermediate_directories(dest_path);
+
+        // Ouvrir le fichier source en binaire comme dans backup_file
+        FILE* source_file = fopen(source_path, "rb");
+        if (!source_file) {
+            perror("Failed to open source file");
+            free(source_path);
+            free(dest_path);
+            continue;
+        }
+
+        // Calculer la taille comme dans backup_file
+        fseek(source_file, 0, SEEK_END);
+        size_t file_size = ftell(source_file);
+        rewind(source_file);
+        size_t num_chunks = (file_size + CHUNK_SIZE - 1) / CHUNK_SIZE;
+
+        // Allouer les chunks comme dans backup_file
+        Chunk** chunks = malloc(num_chunks * sizeof(Chunk*));
+        if (!chunks) {
+            perror("Failed to allocate memory for chunks");
+            fclose(source_file);
+            free(source_path);
+            free(dest_path);
+            continue;
+        }
+
+        // Initialiser la table de hash comme dans backup_file
+        Md5Entry* hash_table[HASH_TABLE_SIZE];
+        init_hash_table(hash_table);
+
+        // Restaurer le fichier
+        int chunk_count = 0;
+        undeduplicate_file(source_file, chunks, &chunk_count);
+        write_restored_file(dest_path, chunks, chunk_count);
+
+        // Nettoyage comme dans backup_file
+        for (size_t i = 0; i < num_chunks; i++) {
+            if (chunks[i]) {
+                free(chunks[i]->data);
+                free(chunks[i]);
+            }
+        }
+        free(chunks);
+        clean_hash_table(hash_table);
+        fclose(source_file);
+        free(source_path);
+        free(dest_path);
+        free(file_path);
+        current = current->next;
+    }
+
+    // Libérer la mémoire comme dans create_backup
+    free(backup_log_path);
+    free_log_list(&backup_log);
+    free(backup_id_copy);
+    free(restore_dir_copy);
+}
+void write_restored_file(const char* output_filename, Chunk** chunks, int chunk_count) {
+    FILE* file = fopen(output_filename, "wb");
+    if (file == NULL) {
+        perror("Failed to open output file");
+        return;
+    }
+
+    for (int i = 0; i < chunk_count; i++) {
+        if (chunks[i] && chunks[i]->data) {
+            unsigned char* data = (unsigned char*)chunks[i]->data;
+
+            if (data[0] == 1) {  // Chunk normal
+                if (fwrite(data + 1, 1, CHUNK_SIZE - 1, file) != CHUNK_SIZE - 1) {
+                    perror("Failed to write chunk data");
+                    fclose(file);
+                    return;
+                }
+            }
+            // On ignore les chunks de type 0 car ce sont des références
+        }
+    }
+
+    fclose(file);
+}
+
 /*
-void list_backups(const char *backup_dir) {
+void list_backups(const char* backup_dir) {
+    file_list_t files = {.head = NULL, .tail = NULL};
+    void list_files(backup_dir, files, 0);
 
 }
-*/
+    */

@@ -113,6 +113,7 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
         if (verbose) printf("Starting restore from '%s' to '%s'\n", source_path, dest_path);
+        restore_backup(source_path, dest_path);
         // Appel à la fonction de restauration (à implémenter)
     } else if (mode == LIST_BACKUPS) {
         if (dest_path != NULL) {

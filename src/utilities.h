@@ -35,4 +35,5 @@ void create_intermediate_directories(const char *path);
 char *get_latest_backup_dir(const char *backup_dir_copy);
 int is_directory_empty(const char *dir_path);
 char *cut_after_first_slash(const char *input);
+void remove_after_slash(const char *input, char *output);
 #endif //UTILITIES_H

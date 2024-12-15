@@ -21,7 +21,7 @@ void write_backup_file(const char *output_filename, Chunk **chunks, int chunk_co
 // Fonction pour la sauvegarde de fichier dédupliqué
 void backup_file(const char *filename,const char *source_path, char *full_backup_path);
 // Fonction permettant la restauration du fichier backup via le tableau de chunk
-void write_restored_file(const char *output_filename, Chunk *chunks, int chunk_count);
+void write_restored_file(const char *output_filename, Chunk **chunks, int chunk_count);
 // Fonction permettant de lister les différentes sauvegardes présentes dans la destination
 void list_backups(const char *backup_dir);
 
