@@ -9,6 +9,7 @@
 #include <dirent.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <math.h>
 
 // Générer le nom de sauvegarde avec la date et l'heure actuelle
 void generate_backup_name(char *buffer, size_t size);

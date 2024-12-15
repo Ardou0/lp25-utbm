@@ -20,13 +20,14 @@
 
 // Structure pour un chunk
 typedef struct {
-    unsigned char md5[MD5_DIGEST_LENGTH]; // MD5 du chunk
+    //unsigned char md5[MD5_DIGEST_LENGTH]; // MD5 du chunk
+    size_t size; // SIZE du chunk
     void *data; // Données du chunk
 } Chunk;
 
 // Table de hachage pour stocker les MD5 et leurs index
 typedef struct {
-    unsigned char md5[MD5_DIGEST_LENGTH];
+    unsigned char md5[MD5_DIGEST_LENGTH * 2 + 1];
     int index;
 } Md5Entry;
 

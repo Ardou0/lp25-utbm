@@ -22,7 +22,7 @@ all: $(TARGET)
 
 # Règle pour l'exécutable
 $(TARGET): $(OBJECTS)
-	$(CC) -o $@ $^ -lssl -lcrypto
+	$(CC) -o $@ $^ -lssl -lcrypto -lm
 
 # Règle générique pour les fichiers objets
 $(SRC_OBJ)/%.o: $(SRC_DIR)/%.c

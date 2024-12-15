@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <math.h>
+#include <malloc.h>
 
 // Générer le nom de sauvegarde avec la date et l'heure actuelle
 void generate_backup_name(char* buffer, size_t size) {
@@ -176,7 +178,7 @@ void create_backup(const char* source_dir, const char* backup_dir) {
         }
         printf("Sauvegarde effectuée. Tous les fichiers sont sauvegardés et l'index est dans .backup_log.\n");
         fclose(log_file);
-        char * full_backup_log_path = build_full_path(full_backup_path, ".backup_log");
+        char* full_backup_log_path = build_full_path(full_backup_path, ".backup_log");
         if (copy_file(log_file_path, full_backup_log_path) != 0) {
             printf("Le fichier des logs n'a pas été dupliquer");
         };
@@ -269,15 +271,17 @@ void create_backup(const char* source_dir, const char* backup_dir) {
         while (elt_save_log != NULL) {
             char* file_source_path = cut_after_first_slash(elt_save_log->path);
             log_element* elt_backup_log = backup_log.head;
-            while (elt_backup_log != NULL) {
+            int find_equivalent = 0;
+            while (elt_backup_log != NULL && find_equivalent == 0) {
                 char* file_backup_path = cut_after_first_slash(elt_backup_log->path);
                 if (file_backup_path == NULL) {
                     printf("file dest path goes Brrrr");
-                    backup_file(elt_save_log->path, source_dir_copy, full_backup_path);
+
                 }
                 else {
                     //printf("%s       %s\n", file_backup_path, file_source_path);
                     if (strcmp(file_source_path, file_backup_path) == 0) {
+                        find_equivalent = 1;
                         if (strcmp((char*)elt_backup_log->md5, (char*)elt_save_log->md5) != 0) {
                             if (new_save == 0) {
                                 if (mkdir(full_backup_path, 0755) == -1) {
@@ -288,7 +292,6 @@ void create_backup(const char* source_dir, const char* backup_dir) {
                                 }
                                 new_save = 1;
                             }
-                            printf("%s\n", elt_save_log->path);
                             backup_file(file_source_path, source_dir_copy, full_backup_path);
                         }
                         else {
@@ -301,6 +304,19 @@ void create_backup(const char* source_dir, const char* backup_dir) {
                 }
                 elt_backup_log = elt_backup_log->next;
                 free(file_backup_path);
+            }
+
+            if (find_equivalent == 0) {
+                if (new_save == 0) {
+                    if (mkdir(full_backup_path, 0755) == -1) {
+                        perror("Erreur lors de la création du répertoire de sauvegarde");
+                        free(source_dir_copy);
+                        free(backup_dir_copy);
+                        return;
+                    }
+                    new_save = 1;
+                }
+                backup_file(file_source_path, source_dir_copy, full_backup_path);
             }
             free(file_source_path);
             elt_save_log = elt_save_log->next;
@@ -339,20 +355,23 @@ void write_backup_file(const char* output_filename, Chunk** chunks, int chunk_co
 
     for (int i = 0; i < chunk_count; i++) {
         unsigned char* data = (unsigned char*)chunks[i]->data;
-        size_t size = CHUNK_SIZE;
-        if (data[0] == 1) {
-            size = CHUNK_SIZE;
-        }
-        else if (data[0] == 0) {
-            size = SUB_CHUNK_SIZE;
-        }
-        else {
-            fprintf(stderr, "Invalid chunk type at index %d\n", i);
-            continue;
-        }
-
+        size_t size = chunks[i]->size - 1; // Utiliser la taille stockée dans le chunk
+        printf("%ld\n", size);
+        /*
+                if (data[0] == 1) {
+                    size = CHUNK_SIZE;
+                }
+                else if (data[0] == 0) {
+                    size = SUB_CHUNK_SIZE;
+                }
+                else {
+                    fprintf(stderr, "Invalid chunk type at index %d\n", i);
+                    continue;
+                }
+        */
+        // Écrire la taille du chunk dans le fichier
         if (fwrite(data, 1, size, file) != size) {
-            perror("Failed to write chunk to file");
+            perror("Failed to write chunk data to file");
             fclose(file);
             return;
         }
@@ -360,6 +379,7 @@ void write_backup_file(const char* output_filename, Chunk** chunks, int chunk_co
 
     fclose(file);
 }
+
 
 // Fonction implémentant la logique pour la sauvegarde d'un fichier
 void backup_file(const char* filename, const char* source_path, char* full_backup_path) {
@@ -410,7 +430,7 @@ void backup_file(const char* filename, const char* source_path, char* full_backu
 
     // Create intermediate directories if they do not exist
     create_intermediate_directories(backup_path);
-
+    printf("%s\n", backup_path);
     write_backup_file(backup_path, tab_chunk, num_chunks);
 
     printf("|%s saved\n", filename_source_path);
@@ -439,24 +459,24 @@ void restore_backup(const char* backup_id, const char* restore_dir) {
     }
 
     // Lire le backup_log comme dans create_backup
-    char* backup_log_path = build_full_path(backup_id, ".backup_log");
+    char* backup_log_path = build_full_path(backup_id_copy, ".backup_log");
     if (!backup_log_path) {
 
         fprintf(stderr, "Erreur lors de la construction du chemin du fichier log\n");
         return;
 
     }
-
+    printf("%s\n", backup_log_path);
     log_t backup_log = read_backup_log(backup_log_path);
     log_element* current = backup_log.head;
 
     while (current) {
         // Construire les chemins comme dans backup_file
-        char *file_path = cut_after_first_slash(current->path);
-        char* source_path = build_full_path(backup_id_copy, file_path);
+        char* file_path = cut_after_first_slash(current->path);
+        char* source_path = build_full_path(backup_id_copy, current->path);
         char* dest_path = build_full_path(restore_dir_copy, file_path);
 
-        printf("%s\n", dest_path);
+        printf("%s\n", source_path);
         if (!source_path || !dest_path) {
             free(source_path);
             free(dest_path);
@@ -479,7 +499,7 @@ void restore_backup(const char* backup_id, const char* restore_dir) {
         fseek(source_file, 0, SEEK_END);
         size_t file_size = ftell(source_file);
         rewind(source_file);
-        size_t num_chunks = (file_size + CHUNK_SIZE - 1) / CHUNK_SIZE;
+        size_t num_chunks = (size_t)ceil((double)file_size / CHUNK_SIZE);
 
         // Allouer les chunks comme dans backup_file
         Chunk** chunks = malloc(num_chunks * sizeof(Chunk*));
@@ -530,22 +550,23 @@ void write_restored_file(const char* output_filename, Chunk** chunks, int chunk_
     }
 
     for (int i = 0; i < chunk_count; i++) {
-        if (chunks[i] && chunks[i]->data) {
-            unsigned char* data = (unsigned char*)chunks[i]->data;
+        if (chunks[i] && chunks[i]->data && chunks[i]->size) {
+            // Convert size to an integer safely
+            size_t size = chunks[i]->size;
+            printf("%ld\n", size);
 
-            if (data[0] == 1) {  // Chunk normal
-                if (fwrite(data + 1, 1, CHUNK_SIZE - 1, file) != CHUNK_SIZE - 1) {
-                    perror("Failed to write chunk data");
-                    fclose(file);
-                    return;
-                }
+            // Write chunk data to the file
+            if (fwrite(chunks[i]->data, 1, size, file) != size) {
+                perror("Failed to write chunk data");
+                fclose(file);
+                return;
             }
-            // On ignore les chunks de type 0 car ce sont des références
         }
     }
 
     fclose(file);
 }
+
 
 /*
 void list_backups(const char* backup_dir) {
