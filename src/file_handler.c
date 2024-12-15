@@ -212,13 +212,12 @@ int copy_file(const char* source_path, const char* dest_path) {
     // Ouvre le fichier source en mode lecture binaire
     struct stat st;
     if (stat(source_path, &st) == 0) {
-        printf("Taille du fichier source : %ld octets\n", st.st_size);
+        //printf("Taille du fichier source : %ld octets\n", st.st_size);
     }
     else {
         perror("Impossible d'obtenir des informations sur le fichier source");
         return -1;
     }
-    printf("%s                 %s", source_path, dest_path);
     FILE* source_file = fopen(source_path, "rb");
     if (source_file == NULL) {
         perror("Erreur lors de l'ouverture du fichier source");
@@ -239,7 +238,6 @@ int copy_file(const char* source_path, const char* dest_path) {
     size_t total_bytes_copied = 0;
 
     while ((bytes_read = fread(buffer, 1, sizeof(buffer), source_file)) > 0) {
-        printf("Lecture de %zu octets\n", bytes_read);
         if (fwrite(buffer, 1, bytes_read, dest_file) != bytes_read) {
             perror("Erreur lors de l'écriture dans le fichier de destination");
             fclose(source_file);
@@ -255,8 +253,6 @@ int copy_file(const char* source_path, const char* dest_path) {
         fclose(dest_file);
         return -1;
     }
-
-    printf("Total de %zu octets copiés.\n", total_bytes_copied);
 
     // Ferme les fichiers
     fclose(source_file);

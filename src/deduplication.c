@@ -46,10 +46,10 @@ void compute_md5(void* data, size_t len, unsigned char* md5_hex_out) {
     bytes_to_hex(md5_out, MD5_DIGEST_LENGTH, md5_hex_out);
 }
 
-int find_md5(Md5Entry* hash_table[HASH_TABLE_SIZE  * 2 + 1], unsigned char* md5) {
+int find_md5(Md5Entry* hash_table[HASH_TABLE_SIZE  ], unsigned char* md5) {
     unsigned int index = hash_md5(md5);
     while (hash_table[index]->index != -1) {
-        if (memcmp(hash_table[index]->md5, md5, MD5_DIGEST_LENGTH  * 2 + 1) == 0) {
+        if (memcmp(hash_table[index]->md5, md5, MD5_DIGEST_LENGTH  ) == 0) {
             return hash_table[index]->index;
         }
         index = (index + 1) % HASH_TABLE_SIZE;
@@ -57,7 +57,7 @@ int find_md5(Md5Entry* hash_table[HASH_TABLE_SIZE  * 2 + 1], unsigned char* md5)
     return -1;
 }
 //sefsefsefsefsef
-void add_md5(Md5Entry* hash_table[HASH_TABLE_SIZE * 2 + 1], unsigned char* md5, int index) {
+void add_md5(Md5Entry* hash_table[HASH_TABLE_SIZE ], unsigned char* md5, int index) {
     unsigned int hash = hash_md5(md5);
     while (hash_table[hash]->index != -1) {
         hash = (hash + 1) % HASH_TABLE_SIZE;
@@ -66,19 +66,19 @@ void add_md5(Md5Entry* hash_table[HASH_TABLE_SIZE * 2 + 1], unsigned char* md5, 
     hash_table[hash]->index = index;
 }
 
-void init_hash_table(Md5Entry* hash_table[HASH_TABLE_SIZE  * 2 + 1]) {
+void init_hash_table(Md5Entry* hash_table[HASH_TABLE_SIZE  ]) {
     for (size_t i = 0; i < HASH_TABLE_SIZE; i++) {
         hash_table[i] = malloc(sizeof(Md5Entry));
         if (hash_table[i] == NULL) {
             fprintf(stderr, "Failed to allocate memory for hash_table entry\n");
             exit(EXIT_FAILURE);
         }
-        memset(hash_table[i]->md5, 0, MD5_DIGEST_LENGTH  * 2 + 1); // Initialize md5 to zeros
+        memset(hash_table[i]->md5, 0, MD5_DIGEST_LENGTH  ); // Initialize md5 to zeros
         hash_table[i]->index = -1; // Initialize index to -1 (or any default value)
     }
 }
 
-void clean_hash_table(Md5Entry* hash_table[HASH_TABLE_SIZE  * 2 + 1]) {
+void clean_hash_table(Md5Entry* hash_table[HASH_TABLE_SIZE  ]) {
     for (size_t i = 0; i < HASH_TABLE_SIZE; i++) {
         if (hash_table[i]) {
             free(hash_table[i]);
@@ -87,7 +87,7 @@ void clean_hash_table(Md5Entry* hash_table[HASH_TABLE_SIZE  * 2 + 1]) {
 }
 
 
-void deduplicate_file(FILE* file, Chunk** chunks, Md5Entry* hash_table[HASH_TABLE_SIZE  * 2 + 1]) {
+void deduplicate_file(FILE* file, Chunk** chunks, Md5Entry* hash_table[HASH_TABLE_SIZE  ]) {
     int chunk_index = 0;
     unsigned char buffer[CHUNK_SIZE];
     size_t bytes_read;
@@ -141,71 +141,62 @@ void deduplicate_file(FILE* file, Chunk** chunks, Md5Entry* hash_table[HASH_TABL
     }
 }
 
-void undeduplicate_file(FILE* file, Chunk** chunks, int* chunk_count) {
+void undeduplicate_file(FILE *file, Chunk **chunks, int *chunk_count) {
     int chunk_index = 0;
     unsigned char buffer[CHUNK_SIZE];
     size_t bytes_read;
-    unsigned char type;
 
-    while ((bytes_read = fread(&type, 1, 1, file)) > 0) {
-        printf("buffer[0]: %d\n", type); // Debug message to display buffer[0]
-        if (type == 1) {
-            // C'est un chunk normal, lire le reste du chunk
-            if (fread(buffer, 1, CHUNK_SIZE - 1, file) != CHUNK_SIZE - 1) {
-                fprintf(stderr, "Failed to read normal chunk\n");
-                exit(EXIT_FAILURE);
-            }
-            // Copier directement dans le tableau de chunks
-            chunks[chunk_index] = malloc(sizeof(Chunk));
-            if (chunks[chunk_index] == NULL) {
-                fprintf(stderr, "Failed to allocate memory for chunk\n");
-                exit(EXIT_FAILURE);
-            }
-            chunks[chunk_index]->data = malloc(CHUNK_SIZE - 1);
-            if (chunks[chunk_index]->data == NULL) {
-                fprintf(stderr, "Failed to allocate memory for chunk data\n");
-                exit(EXIT_FAILURE);
-            }
-            memcpy(chunks[chunk_index]->data, buffer, CHUNK_SIZE - 1);
-            chunks[chunk_index]->size = CHUNK_SIZE - 1;
-            chunk_index++;
-        } else {
-            // C'est un sub_chunk, lire le reste du sub_chunk
-            if (fread(buffer, 1, SUB_CHUNK_SIZE - 1, file) != SUB_CHUNK_SIZE - 1) {
-                fprintf(stderr, "Failed to read sub_chunk\n");
-                exit(EXIT_FAILURE);
-            }
-            // Récupérer l'index du chunk original
-            int index;
-            // Lire l'index en utilisant ntohl pour convertir en format hôte
-            memcpy(&index, buffer, sizeof(int));
-            index = ntohl(index);
-            printf("Read sub_chunk with index: %d\n", index); // Debug message
-            if (index >= chunk_index) {
-                fprintf(stderr, "Invalid index in sub_chunk\n");
-                exit(EXIT_FAILURE);
-            }
-            Chunk* original_chunk = chunks[index];
-            // Copier les données du chunk original dans le tableau de chunks
-            chunks[chunk_index] = malloc(sizeof(Chunk));
-            if (chunks[chunk_index] == NULL) {
-                fprintf(stderr, "Failed to allocate memory for chunk\n");
-                exit(EXIT_FAILURE);
-            }
-            chunks[chunk_index]->data = malloc(original_chunk->size);
-            if (chunks[chunk_index]->data == NULL) {
-                fprintf(stderr, "Failed to allocate memory for chunk data\n");
-                exit(EXIT_FAILURE);
-            }
-            memcpy(chunks[chunk_index]->data, original_chunk->data, original_chunk->size);
-            chunks[chunk_index]->size = original_chunk->size;
-            chunk_index++;
+    while ((bytes_read = fread(buffer, 1, CHUNK_SIZE, file)) > 0) {
+        //printf("Read %zu bytes\n", bytes_read);
+        //printf("First byte: %d\n", buffer[0]);
+
+        chunks[chunk_index] = malloc(sizeof(Chunk));
+        if (chunks[chunk_index] == NULL) {
+            fprintf(stderr, "Failed to allocate memory for chunk\n");
+            exit(EXIT_FAILURE);
         }
-        // Réinitialiser le buffer après avoir traité chaque chunk
-        memset(buffer, 0, CHUNK_SIZE);
+
+        if (buffer[0] == 1) {  // Chunk normal
+            //printf("Normal chunk detected\n");
+            chunks[chunk_index]->data = malloc(bytes_read);
+            if (chunks[chunk_index]->data == NULL) {
+                fprintf(stderr, "Failed to allocate memory for chunk data\n");
+                exit(EXIT_FAILURE);
+            }
+            // Copier tout le contenu sauf le marqueur
+            memcpy(chunks[chunk_index]->data, buffer + 1, bytes_read - 1);
+        }
+        else if (buffer[0] == 0) {  // Sub_chunk
+            //printf("Sub chunk detected\n");
+            int ref_index;
+            memcpy(&ref_index, buffer + 1, sizeof(int));
+            //printf("Reference index: %d\n", ref_index);
+
+            if (ref_index >= 0 && ref_index < chunk_index && chunks[ref_index] && chunks[ref_index]->data) {
+                chunks[chunk_index]->data = malloc(CHUNK_SIZE - 1);
+                if (chunks[chunk_index]->data == NULL) {
+                    fprintf(stderr, "Failed to allocate memory for chunk data\n");
+                    exit(EXIT_FAILURE);
+                }
+                memcpy(chunks[chunk_index]->data, chunks[ref_index]->data, CHUNK_SIZE - 1);
+            }
+            else {
+                //fprintf(stderr, "Invalid reference index: %d\n", ref_index);
+                free(chunks[chunk_index]);
+                chunks[chunk_index] = NULL;
+                continue;
+            }
+        }
+        else {
+            //printf("Unknown chunk type: %d\n", buffer[0]);
+            free(chunks[chunk_index]);
+            chunks[chunk_index] = NULL;
+            continue;
+        }
+
+        chunk_index++;
     }
 
-    // Mettre à jour le compteur de chunks
+    //printf("Total chunks processed: %d\n", chunk_index);
     *chunk_count = chunk_index;
 }
-

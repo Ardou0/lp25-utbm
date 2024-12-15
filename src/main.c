@@ -103,41 +103,30 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Error: --source and --dest are required for --backup.\n");
             return EXIT_FAILURE;
         }
-        if (verbose) printf("Starting backup from '%s' to '%s'\n", source_path, dest_path);
-        // Appel à la fonction de sauvegarde (à implémenter)
+        if (verbose) printf("|Starting backup from '%s' to '%s'\n", source_path, dest_path);
         create_backup(source_path, dest_path);
-        printf("Fini\n");
+        if (verbose) printf("|Backup done \n");
     } else if (mode == RESTORE) {
         if (source_path == NULL || dest_path == NULL) {
             fprintf(stderr, "Error: --source and --dest are required for --restore.\n");
             return EXIT_FAILURE;
         }
-        if (verbose) printf("Starting restore from '%s' to '%s'\n", source_path, dest_path);
+        if (verbose) printf("|Starting restore from '%s' to '%s'\n", source_path, dest_path);
         restore_backup(source_path, dest_path);
-        // Appel à la fonction de restauration (à implémenter)
+        if (verbose) printf("|Restore done \n");
     } else if (mode == LIST_BACKUPS) {
-        if (dest_path != NULL) {
-            if (verbose) printf("Listing backups...\n");
-            file_list_t files = { .head = NULL, .tail = NULL };
-            list_files(dest_path, &files, 0);
-            file_element *current = files.head;
-            while (current) {
-                printf("%s\n", current->path);
-                current = current->next;
-            }
-            free_file_list(&files);
+        if (source_path != NULL) {
+            if (verbose) printf("|Listing backups...\n\n");
+            list_backups(source_path);
+            if (verbose) printf("\n|Pick a backup name to restore from folder.\n");
         } else {
-            fprintf(stderr, "Error: --dest is required for --list-backups.\n");
+            fprintf(stderr, "Error: --source is required for --list-backups.\n");
             return EXIT_FAILURE;
         }
-
-        // Appel à la fonction de listing des sauvegardes (à implémenter)
     }
 
     if(dry_run) {
         printf("Need to be implemented");
     }
-
-    if (verbose) printf("Operation completed successfully.\n");
     return EXIT_SUCCESS;
 }
