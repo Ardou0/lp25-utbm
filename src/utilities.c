@@ -313,14 +313,25 @@ char *cut_after_first_slash(const char *input) {
 
     return result;
 }
-
-void remove_after_slash(const char *input, char *output) {
+char *remove_after_slash(const char *input) {
     const char *slash_pos = strchr(input, '/');
     if (slash_pos) {
         size_t length = slash_pos - input;
+        char *output = malloc(length + 1);  // Allouer de la mémoire pour la chaîne de sortie
+        if (output == NULL) {
+            fprintf(stderr, "Failed to allocate memory\n");
+            exit(EXIT_FAILURE);
+        }
         strncpy(output, input, length);
         output[length] = '\0';
+        return output;
     } else {
+        char *output = malloc(strlen(input) + 1);  // Allouer de la mémoire pour la chaîne de sortie
+        if (output == NULL) {
+            fprintf(stderr, "Failed to allocate memory\n");
+            exit(EXIT_FAILURE);
+        }
         strcpy(output, input);
+        return output;
     }
 }

@@ -111,7 +111,7 @@ void deduplicate_file(FILE* file, Chunk** chunks, Md5Entry* hash_table[HASH_TABL
                 exit(EXIT_FAILURE);
             }
             unsigned char* data = (unsigned char*)chunks[chunk_index]->data;
-            data[0] = 1; // Indiquer que c'est un chunk normal
+            data[0] = 01; // Indiquer que c'est un chunk normal
             memcpy(data + 1, buffer, bytes_read);
             // Remplir les octets restants avec des zéros
             chunks[chunk_index]->size = bytes_read + 1;
@@ -120,7 +120,7 @@ void deduplicate_file(FILE* file, Chunk** chunks, Md5Entry* hash_table[HASH_TABL
         else {
             // Chunk déjà présent, créer un sub_chunk de référence
             unsigned char sub_chunk[SUB_CHUNK_SIZE];
-            sub_chunk[0] = 0; // Premier bit à 0 pour indiquer un sub_chunk
+            sub_chunk[0] = 00; // Premier bit à 0 pour indiquer un sub_chunk
             memcpy(sub_chunk + 1, &index, sizeof(int)); // Stocker l'index en binaire
             chunks[chunk_index] = malloc(sizeof(Chunk)); // Allocate memory for the chunk
             if (chunks[chunk_index] == NULL) {
@@ -141,15 +141,13 @@ void deduplicate_file(FILE* file, Chunk** chunks, Md5Entry* hash_table[HASH_TABL
     }
 }
 
+
 void undeduplicate_file(FILE *file, Chunk **chunks, int *chunk_count) {
     int chunk_index = 0;
     unsigned char buffer[CHUNK_SIZE];
     size_t bytes_read;
 
     while ((bytes_read = fread(buffer, 1, CHUNK_SIZE, file)) > 0) {
-        //printf("Read %zu bytes\n", bytes_read);
-        //printf("First byte: %d\n", buffer[0]);
-
         chunks[chunk_index] = malloc(sizeof(Chunk));
         if (chunks[chunk_index] == NULL) {
             fprintf(stderr, "Failed to allocate memory for chunk\n");
@@ -157,38 +155,43 @@ void undeduplicate_file(FILE *file, Chunk **chunks, int *chunk_count) {
         }
 
         if (buffer[0] == 1) {  // Chunk normal
-            //printf("Normal chunk detected\n");
-            chunks[chunk_index]->data = malloc(bytes_read);
+            chunks[chunk_index]->data = malloc(bytes_read - 1);
             if (chunks[chunk_index]->data == NULL) {
                 fprintf(stderr, "Failed to allocate memory for chunk data\n");
                 exit(EXIT_FAILURE);
             }
             // Copier tout le contenu sauf le marqueur
             memcpy(chunks[chunk_index]->data, buffer + 1, bytes_read - 1);
+            chunks[chunk_index]->size = bytes_read - 1;  // Taille en octets
         }
         else if (buffer[0] == 0) {  // Sub_chunk
-            //printf("Sub chunk detected\n");
             int ref_index;
+            if (bytes_read < sizeof(int) + 1) {
+                fprintf(stderr, "Not enough bytes read for sub_chunk reference\n");
+                free(chunks[chunk_index]);
+                chunks[chunk_index] = NULL;
+                continue;
+            }
             memcpy(&ref_index, buffer + 1, sizeof(int));
-            //printf("Reference index: %d\n", ref_index);
 
             if (ref_index >= 0 && ref_index < chunk_index && chunks[ref_index] && chunks[ref_index]->data) {
-                chunks[chunk_index]->data = malloc(CHUNK_SIZE - 1);
+                chunks[chunk_index]->data = malloc(chunks[ref_index]->size);
                 if (chunks[chunk_index]->data == NULL) {
                     fprintf(stderr, "Failed to allocate memory for chunk data\n");
                     exit(EXIT_FAILURE);
                 }
-                memcpy(chunks[chunk_index]->data, chunks[ref_index]->data, CHUNK_SIZE - 1);
+                memcpy(chunks[chunk_index]->data, chunks[ref_index]->data, chunks[ref_index]->size);
+                chunks[chunk_index]->size = chunks[ref_index]->size;  // Taille en octets
             }
             else {
-                //fprintf(stderr, "Invalid reference index: %d\n", ref_index);
+                fprintf(stderr, "Invalid reference index: %d\n", ref_index);
                 free(chunks[chunk_index]);
                 chunks[chunk_index] = NULL;
                 continue;
             }
         }
         else {
-            //printf("Unknown chunk type: %d\n", buffer[0]);
+            fprintf(stderr, "Unknown chunk type: %d\n", buffer[0]);
             free(chunks[chunk_index]);
             chunks[chunk_index] = NULL;
             continue;
@@ -197,6 +200,5 @@ void undeduplicate_file(FILE *file, Chunk **chunks, int *chunk_count) {
         chunk_index++;
     }
 
-    //printf("Total chunks processed: %d\n", chunk_index);
     *chunk_count = chunk_index;
 }

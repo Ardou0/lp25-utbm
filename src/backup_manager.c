@@ -31,9 +31,6 @@ void generate_backup_name(char* buffer, size_t size) {
     snprintf(buffer, size, "%s%s", date_buffer, ms_buffer);
 }
 
-//ajoute au nom du fichier changé: sa date de modification et sa somme md5
-
-
 // Fonction pour créer une nouvelle sauvegarde complète puis incrémentale
 void create_backup(const char* source_dir, const char* backup_dir) {
     char backup_name[128];
@@ -91,8 +88,6 @@ void create_backup(const char* source_dir, const char* backup_dir) {
             free(backup_dir_copy);
             return;
         }
-
-        printf("Répertoire de sauvegarde créé : %s\n", full_backup_path);
 
         // Liste chaînée de tous les fichiers contenus dans la source
         file_list_t tablist = { .head = NULL, .tail = NULL };
@@ -322,7 +317,7 @@ void create_backup(const char* source_dir, const char* backup_dir) {
 
         fclose(log_file);
 
-        char *full_backup_log_path = build_full_path(full_backup_path, ".backup_log");
+        char* full_backup_log_path = build_full_path(full_backup_path, ".backup_log");
         if (copy_file(backup_log_path, full_backup_log_path) != 0) {
             printf("Le fichier des logs n'a pas été copier");
         };
@@ -351,7 +346,7 @@ void write_backup_file(const char* output_filename, Chunk** chunks, int chunk_co
 
     for (int i = 0; i < chunk_count; i++) {
         unsigned char* data = (unsigned char*)chunks[i]->data;
-        size_t size = chunks[i]->size - 1; // Utiliser la taille stockée dans le chunk
+        size_t size = chunks[i]->size; // Utiliser la taille stockée dans le chunk
         // Écrire la taille du chunk dans le fichier
         if (fwrite(data, 1, size, file) != size) {
             perror("Failed to write chunk data to file");
@@ -454,10 +449,9 @@ void restore_backup(const char* backup_id, const char* restore_dir) {
     while (current) {
         // Construire les chemins comme dans backup_file
         char* file_path = cut_after_first_slash(current->path);
-        char* source_path = build_full_path(backup_id_copy, current->path);
+        char* dir_backup = remove_after_slash(backup_id_copy);
+        char* source_path = build_full_path(dir_backup, current->path);
         char* dest_path = build_full_path(restore_dir_copy, file_path);
-
-        printf("%s\n", source_path);
         if (!source_path || !dest_path) {
             free(source_path);
             free(dest_path);
@@ -512,6 +506,7 @@ void restore_backup(const char* backup_id, const char* restore_dir) {
         clean_hash_table(hash_table);
         fclose(source_file);
         free(source_path);
+        free(dir_backup);
         free(dest_path);
         free(file_path);
         current = current->next;
@@ -533,7 +528,7 @@ void write_restored_file(const char* output_filename, Chunk** chunks, int chunk_
     for (int i = 0; i < chunk_count; i++) {
         if (chunks[i] && chunks[i]->data && chunks[i]->size) {
             // Convert size to an integer safely
-            size_t size = 4096;
+            size_t size = chunks[i]->size;
             // Write chunk data to the file
             if (fwrite(chunks[i]->data, 1, size, file) != size) {
                 perror("Failed to write chunk data");

@@ -119,6 +119,7 @@ int main(int argc, char *argv[]) {
             if (verbose) printf("|Listing backups...\n\n");
             list_backups(source_path);
             if (verbose) printf("\n|Pick a backup name to restore from folder.\n");
+            if (verbose) printf("|Remember to add backslashes.\n");
         } else {
             fprintf(stderr, "Error: --source is required for --list-backups.\n");
             return EXIT_FAILURE;

@@ -119,6 +119,6 @@ char *cut_after_first_slash(const char *input);
 * Copie la partie avant le premier slash dans output.
 */
 
-void remove_after_slash(const char *input, char *output);
+char* remove_after_slash(const char *input);
 
 #endif //UTILITIES_H
