@@ -17,10 +17,10 @@ unsigned int hash_md5(unsigned char *md5) {
 void bytes_to_hex(const unsigned char *bytes, size_t len, unsigned char *hex) {
     const char *hex_chars = "0123456789abcdef";
     for (size_t i = 0; i < len; i++) {
-        hex[2 * i] = hex_chars[(bytes[i] >> 4) & 0xF];
-        hex[2 * i + 1] = hex_chars[bytes[i] & 0xF];
+        hex[2  *i] = hex_chars[(bytes[i] >> 4) & 0xF];
+        hex[2  *i + 1] = hex_chars[bytes[i] & 0xF];
     }
-    hex[2 * len] = '\0';
+    hex[2  *len] = '\0';
 }
 
 void compute_md5(void *data, size_t len, unsigned char *md5_hex_out) {
@@ -55,7 +55,7 @@ int find_md5(Md5Entry *hash_table[HASH_TABLE_SIZE], unsigned char *md5) {
     }
     return -1;
 }
-
+//sefsefsefsefsef
 void add_md5(Md5Entry *hash_table[HASH_TABLE_SIZE], unsigned char *md5, int index) {
     unsigned int hash = hash_md5(md5);
     while (hash_table[hash]->index != -1) {
@@ -90,7 +90,7 @@ void deduplicate_file(FILE *file, Chunk **chunks, Md5Entry *hash_table[HASH_TABL
     unsigned char buffer[CHUNK_SIZE];
     size_t bytes_read;
 
-    while ((bytes_read = fread(buffer, 1, CHUNK_SIZE, file)) > 0) {
+    while ((bytes_read = fread(buffer, 1, CHUNK_SIZE - 1, file)) > 0) {
         unsigned char md5[MD5_DIGEST_LENGTH];
         compute_md5(buffer, bytes_read, md5);
 
@@ -103,12 +103,16 @@ void deduplicate_file(FILE *file, Chunk **chunks, Md5Entry *hash_table[HASH_TABL
                 fprintf(stderr, "Failed to allocate memory for chunk\n");
                 exit(EXIT_FAILURE);
             }
-            chunks[chunk_index]->data = malloc(bytes_read);
+            chunks[chunk_index]->data = malloc(CHUNK_SIZE);
             if (chunks[chunk_index]->data == NULL) {
                 fprintf(stderr, "Failed to allocate memory for chunk data\n");
                 exit(EXIT_FAILURE);
             }
-            memcpy(chunks[chunk_index]->data, buffer, bytes_read);
+            unsigned char *data = (unsigned char *)chunks[chunk_index]->data;
+            data[0] = 1; // Indiquer que c'est un chunk normal
+            memcpy(data + 1, buffer, bytes_read);
+            // Remplir les octets restants avec des zéros
+            memset(data + 1 + bytes_read, 0, CHUNK_SIZE - 1 - bytes_read);
             memcpy(chunks[chunk_index]->md5, md5, MD5_DIGEST_LENGTH);
             chunk_index++;
         } else {
@@ -127,10 +131,13 @@ void deduplicate_file(FILE *file, Chunk **chunks, Md5Entry *hash_table[HASH_TABL
                 exit(EXIT_FAILURE);
             }
             memcpy(chunks[chunk_index]->data, sub_chunk, SUB_CHUNK_SIZE);
+            // Remplir les octets restants avec des zéros
+            memset((unsigned char *)chunks[chunk_index]->data + sizeof(int) + 1, 0, SUB_CHUNK_SIZE - sizeof(int) - 1);
             chunk_index++;
         }
     }
 }
+
 
 void undeduplicate_file(FILE *file, Chunk **chunks, int *chunk_count) {
     int chunk_index = 0;

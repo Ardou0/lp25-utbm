@@ -9,11 +9,11 @@ int is_directory_accessible(const char *path);
 
 // Fonction pour construire le chemin complet d'un fichier
 //utile pour backup_manager
-char* build_full_path(const char *dir, const char *relative_path);
+char *build_full_path(const char *dir, const char *relative_path);
 
 // Fonction pour obtenir la dernière date de modification d'un fichier
 //utile pour backup_manager
-char* get_last_modification_date(const char *filepath);
+char *get_last_modification_date(const char *filepath);
 
 //calcule le md5 d'un fichier
 //utile pour backup_manager
@@ -29,4 +29,10 @@ int compare_dates(const char *date1, const char *date2);
 
 void remove_trailing_slash(char *path);
 
+char *remove_source_dir(const char *source_dir_copy, const char *full_path);
+
+void create_intermediate_directories(const char *path);
+char *get_latest_backup_dir(const char *backup_dir_copy);
+int is_directory_empty(const char *dir_path);
+char *cut_after_first_slash(const char *input);
 #endif //UTILITIES_H

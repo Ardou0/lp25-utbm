@@ -38,7 +38,6 @@ void create_backup(const char* source_dir, const char* backup_dir) {
     char backup_name[128];
     //char log_file_path[1024];
     //char full_backup_path[1024];
-    struct stat st;
 
     // Remove trailing slash from source and backup directories
     char* source_dir_copy = strdup(source_dir);
@@ -84,7 +83,7 @@ void create_backup(const char* source_dir, const char* backup_dir) {
     printf("Chemin complet de la sauvegarde : %s\n", full_backup_path);
 
     // Vérifier s'il existe une sauvegarde précédente
-    if (stat(backup_dir_copy, &st) == 0 && S_ISDIR(st.st_mode)) {
+    if (is_directory_empty(backup_dir_copy) == 1) {
         printf("Aucune sauvegarde précédente trouvée. Création d'un nouveau répertoire.\n");
 
         // Créer un répertoire pour la nouvelle sauvegarde
@@ -128,35 +127,27 @@ void create_backup(const char* source_dir, const char* backup_dir) {
                 free(backup_dir_copy);
                 return;
             }
+            char* file_dest_path = remove_source_dir(source_dir_copy, temporary->path);
+            unsigned char md5_hex[MD5_DIGEST_LENGTH * 2 + 1] = { 0 };
+            get_md5(temporary->path, md5_hex);
+            char* log_element_path = build_full_path(backup_name, file_dest_path);
 
-            char* file_source_path = build_full_path(source_dir_copy, temporary->path);
-            if (!file_source_path) {
-                perror("Failed to build full path");
-                free(new_elt);
-                free(source_dir_copy);
-                free(backup_dir_copy);
-                return;
-            }
-            unsigned char md5_hex[MD5_DIGEST_LENGTH] = { 0 };
 
-            get_md5(file_source_path, md5_hex);
-            char* log_element_path = build_full_path(full_backup_path, temporary->path);
             new_elt->path = log_element_path;
             if (!new_elt->path) {
                 perror("Failed to build full path for backup");
                 free(new_elt);
-                free(file_source_path);
+                free(file_dest_path);
                 free(source_dir_copy);
                 free(backup_dir_copy);
                 return;
             }
-            char* last_date = get_last_modification_date(file_source_path);
+            char* last_date = get_last_modification_date(temporary->path);
             strcpy(new_elt->date, last_date);
-            printf("%s\n", new_elt->date);
-            memcpy(new_elt->md5, md5_hex, MD5_DIGEST_LENGTH * 2 + 1);
+            strcpy((char*)new_elt->md5, (char*)md5_hex);
             new_elt->next = NULL;
             new_elt->prev = tablog.tail;
-            
+
             if (tablog.tail) {
                 tablog.tail->next = new_elt;
             }
@@ -165,61 +156,166 @@ void create_backup(const char* source_dir, const char* backup_dir) {
             }
             tablog.tail = new_elt;
 
-            backup_file(temporary->path, source_dir_copy, full_backup_path);
+            backup_file(file_dest_path, source_dir_copy, full_backup_path);
 
             temporary = temporary->next;
-            free(file_source_path);
+            free(file_dest_path);
             free(last_date);
         }
 
 
 
         // Pointeur sur la liste tablog, pour tout écrire dans backup.log
-        log_element *search_elt = tablog.head;
+        log_element* search_elt = tablog.head;
         while (search_elt != NULL) {
-            printf("%s\n", search_elt->date);
-            fprintf(log_file, "%s,%s,%s\n", search_elt->path, search_elt->date, search_elt->md5);
-            
-            //write_log_element(search_elt, log_file);
+
+            //fprintf(log_file, "%s,%s,%s\n", search_elt->path, search_elt->date, search_elt->md5);
+
+            write_log_element(search_elt, log_file);
             search_elt = search_elt->next;
         }
         printf("Sauvegarde effectuée. Tous les fichiers sont sauvegardés et l'index est dans .backup_log.\n");
         fclose(log_file);
         free(log_file_path);
-        
+
         free_log_list(&tablog);
         free_file_list(&tablist);
     }
     else {
-        log_t backup_log = { .head = NULL, .tail = NULL };
-        log_t save_log = { .head = NULL, .tail = NULL };
-        log_t new_save_log = { .head = NULL, .tail = NULL };
+        printf("Une sauvegarde a été trouvé. Création d'un nouveau répertoire.\n");
+        char* backup_log_path = build_full_path(backup_dir_copy, ".backup_log");
+        char* last_backup_directory = get_latest_backup_dir(backup_dir_copy);
+        printf("%s\n", last_backup_directory);
 
-        backup_log = read_backup_log(full_backup_path);
-        save_log = read_backup_log(source_dir_copy);
-        log_element* elt_backup_log = backup_log.head;
+        log_t backup_log = read_backup_log(backup_log_path);
+
+
+        log_t save_log = { .head = NULL, .tail = NULL };
+
+        file_list_t tablist = { .head = NULL, .tail = NULL };
+        list_files(source_dir_copy, &tablist, 1);
+        file_element* temporary = tablist.head;
+
+        char* last_backup_directory_path = build_full_path(last_backup_directory, ".backup_log");
+        char* last_backup_directory_full_path = build_full_path(backup_dir_copy, last_backup_directory_path);
+        printf("%s\n", last_backup_directory_full_path);
+        if (copy_file(backup_log_path, last_backup_directory_full_path) != 0) {
+            printf("Le fichier des logs n'a pas été dupliquer");
+        };
+
+        FILE* log_file = NULL;
+        // Créer le fichier .backup_log
+        log_file = fopen(backup_log_path, "w");
+        if (!log_file) {
+            perror("Erreur lors de la création du fichier .backup_log");
+            free(source_dir_copy);
+            free(backup_dir_copy);
+            return;
+        }
+
+        while (temporary != NULL) {
+            log_element* new_elt = malloc(sizeof(log_element));
+            if (!new_elt) {
+                perror("Memory allocation failed");
+                free(source_dir_copy);
+                free(backup_dir_copy);
+                return;
+            }
+            char* file_dest_path = remove_source_dir(source_dir_copy, temporary->path);
+            unsigned char md5_hex[MD5_DIGEST_LENGTH * 2 + 1] = { 0 };
+            get_md5(temporary->path, md5_hex);
+            char* log_element_path = build_full_path(backup_name, file_dest_path);
+
+
+            new_elt->path = log_element_path;
+            if (!new_elt->path) {
+                perror("Failed to build full path for backup");
+                free(new_elt);
+                free(file_dest_path);
+                free(source_dir_copy);
+                free(backup_dir_copy);
+                return;
+            }
+            char* last_date = get_last_modification_date(temporary->path);
+            strcpy(new_elt->date, last_date);
+
+            strcpy((char*)new_elt->md5, (char*)md5_hex);
+
+            new_elt->next = NULL;
+            new_elt->prev = save_log.tail;
+
+            if (save_log.tail) {
+                save_log.tail->next = new_elt;
+            }
+            else {
+                save_log.head = new_elt;
+            }
+            save_log.tail = new_elt;
+            temporary = temporary->next;
+            free(file_dest_path);
+            free(last_date);
+        }
+
         log_element* elt_save_log = save_log.head;
-        log_element* elt_new = new_save_log.head;
-        while (elt_backup_log != NULL) {
-            while (elt_save_log != NULL) {
-                if (strcmp(elt_backup_log->path, elt_save_log->path) == 0) {
-                    int result = compare_dates(elt_backup_log->date, elt_save_log->date);
-                    if (result == 0) {
-                        elt_new = elt_backup_log;
-                        elt_new = elt_new->next;
-                    }
-                    if (result < 0) {
-                        // Mettre à jour le fichier (trouver comment faire)
-                        elt_new = elt_backup_log;
-                        elt_new = elt_new->next;
+
+        int new_save = 0;
+
+        while (elt_save_log != NULL) {
+            char* file_source_path = cut_after_first_slash(elt_save_log->path);
+            log_element* elt_backup_log = backup_log.head;
+            while (elt_backup_log != NULL) {
+                char* file_backup_path = cut_after_first_slash(elt_backup_log->path);
+                if (file_backup_path == NULL) {
+                    printf("file dest path goes Brrrr");
+                    backup_file(elt_save_log->path, source_dir_copy, full_backup_path);
+                }
+                else {
+                    //printf("%s       %s\n", file_backup_path, file_source_path);
+                    if (strcmp(file_source_path, file_backup_path) == 0) {
+                        if (strcmp((char*)elt_backup_log->md5, (char*)elt_save_log->md5) != 0) {
+                            if (new_save == 0) {
+                                if (mkdir(full_backup_path, 0755) == -1) {
+                                    perror("Erreur lors de la création du répertoire de sauvegarde");
+                                    free(source_dir_copy);
+                                    free(backup_dir_copy);
+                                    return;
+                                }
+                                new_save = 1;
+                            }
+                            printf("%s\n", elt_save_log->path);
+                            backup_file(file_source_path, source_dir_copy, full_backup_path);
+                        }
+                        else {
+                            free(elt_save_log->path);
+                            elt_save_log->path = strdup(elt_backup_log->path);
+                            strcpy((char*)elt_save_log->md5, (char*)elt_backup_log->md5);
+                            strcpy(elt_save_log->date, elt_backup_log->date);
+                        }
                     }
                 }
-                elt_save_log = elt_save_log->next;
+                elt_backup_log = elt_backup_log->next;
+                free(file_backup_path);
             }
-            elt_backup_log = elt_backup_log->next;
+            free(file_source_path);
+            elt_save_log = elt_save_log->next;
 
             // Penser à copier le fichier backp.log avant de le modifier
         }
+
+        log_element* search_elt = save_log.head;
+        while (search_elt != NULL) {
+            write_log_element(search_elt, log_file);
+            search_elt = search_elt->next;
+        }
+
+        fclose(log_file);
+        free(last_backup_directory);
+        free(backup_log_path);
+        free(last_backup_directory_path);
+        free(last_backup_directory_full_path);
+        free_log_list(&backup_log);
+        free_log_list(&save_log);
+        free_file_list(&tablist);
     }
 
     free(full_backup_path);
@@ -237,7 +333,7 @@ void write_backup_file(const char* output_filename, Chunk** chunks, int chunk_co
 
     for (int i = 0; i < chunk_count; i++) {
         unsigned char* data = (unsigned char*)chunks[i]->data;
-        size_t size = 0;
+        size_t size = CHUNK_SIZE;
         if (data[0] == 1) {
             size = CHUNK_SIZE;
         }
@@ -262,8 +358,8 @@ void write_backup_file(const char* output_filename, Chunk** chunks, int chunk_co
 // Fonction implémentant la logique pour la sauvegarde d'un fichier
 void backup_file(const char* filename, const char* source_path, char* full_backup_path) {
     // Deduplication from the source directory
-
     char* filename_source_path = build_full_path(source_path, filename);
+
     if (!filename_source_path) {
         perror("Failed to build full path for source file");
         return;
@@ -306,6 +402,9 @@ void backup_file(const char* filename, const char* source_path, char* full_backu
         return;
     }
 
+    // Create intermediate directories if they do not exist
+    create_intermediate_directories(backup_path);
+
     write_backup_file(backup_path, tab_chunk, num_chunks);
 
     // Free allocated memory
@@ -322,22 +421,9 @@ void backup_file(const char* filename, const char* source_path, char* full_backu
 }
 
 
-// Fonction permettant la restauration du fichier backup via le tableau de chunk
-//void write_restored_file(const char* output_filename, Chunk* chunks, int chunk_count) {
-    /*
-    */
-    //}
+// Fonction permettant de lister les différentes sauvegardes présentes dans la destination
+/*
+void list_backups(const char *backup_dir) {
 
-    // Fonction pour restaurer une sauvegarde
-    //void restore_backup(const char* backup_id, const char* restore_dir) {
-        /* @param: backup_id est le chemin vers le répertoire de la sauvegarde que l'on veut restaurer
-        *          restore_dir est le répertoire de destination de la restauration
-        */
-        //}
-
-        // Fonction permettant de lister les différentes sauvegardes présentes dans la destination
-        /*
-        void list_backups(const char* backup_dir) {
-
-        }
-        */
+}
+*/
