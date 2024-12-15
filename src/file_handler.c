@@ -11,9 +11,9 @@
 #include "deduplication.h"
 
 // Fonction permettant de lire un élément du fichier .backup_log
-log_t read_backup_log(const char* logfile) {
+log_t read_backup_log(const char *logfile) {
     log_t logs = { .head = NULL, .tail = NULL };
-    FILE* file = fopen(logfile, "r");
+    FILE *file = fopen(logfile, "r");
     if (!file) {
         perror("Error opening backup log");
         return logs;
@@ -21,16 +21,16 @@ log_t read_backup_log(const char* logfile) {
 
     char line[2048];
     while (fgets(line, sizeof(line), file)) {
-        log_element* new_elt = malloc(sizeof(log_element));
+        log_element *new_elt = malloc(sizeof(log_element));
         if (!new_elt) {
             perror("Memory allocation failed");
             fclose(file);
             return logs;
         }
 
-        char* path = strtok(line, ",");
-        char* date = strtok(NULL, ",");
-        char* md5_hex = strtok(NULL, ",");
+        char *path = strtok(line, ",");
+        char *date = strtok(NULL, ",");
+        char *md5_hex = strtok(NULL, ",");
 
         if (!path || !date || !md5_hex) {
             fprintf(stderr, "Error parsing line: %s\n", line);
@@ -67,14 +67,14 @@ log_t read_backup_log(const char* logfile) {
 
 
 // Fonction permettant de mettre à jour une ligne du fichier .backup_log
-void update_backup_log(const char* logfile, log_t* logs) {
-    FILE* file = fopen(logfile, "w");
+void update_backup_log(const char *logfile, log_t *logs) {
+    FILE *file = fopen(logfile, "w");
     if (!file) {
         perror("Error opening backup log for writing");
         return;
     }
 
-    log_element* current = logs->head;
+    log_element *current = logs->head;
     while (current) {
         write_log_element(current, file);
         current = current->next;
@@ -84,7 +84,7 @@ void update_backup_log(const char* logfile, log_t* logs) {
 }
 
 // Fonction permettant d'écrire un élément log dans le fichier .backup_log
-void write_log_element(log_element* element, FILE* log_file) {
+void write_log_element(log_element *element, FILE *log_file) {
     if (element == NULL || log_file == NULL) {
         return;
     }
@@ -102,9 +102,9 @@ void write_log_element(log_element* element, FILE* log_file) {
 }
 
 // Fonction pour lister les fichiers dans un répertoire et les ajouter à une liste chaînée
-void list_files(const char* path, file_list_t* file_list, int recursive) {
+void list_files(const char *path, file_list_t *file_list, int recursive) {
     // Buffer pour le chemin
-    char* path_buffer = strdup(path);
+    char *path_buffer = strdup(path);
     if (!path_buffer) {
         perror("Error allocating memory");
         return;
@@ -113,8 +113,8 @@ void list_files(const char* path, file_list_t* file_list, int recursive) {
     // Si le path contient un '/' à la fin, le retirer
     remove_trailing_slash(path_buffer);
 
-    struct dirent* entry;
-    DIR* dir = opendir(path_buffer);
+    struct dirent *entry;
+    DIR *dir = opendir(path_buffer);
 
     if (!dir) {
         perror("Error opening directory");
@@ -124,7 +124,7 @@ void list_files(const char* path, file_list_t* file_list, int recursive) {
 
     while ((entry = readdir(dir))) {
         if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-            char* full_path = build_full_path(path, entry->d_name);
+            char *full_path = build_full_path(path, entry->d_name);
             if (!full_path) {
                 perror("Error building full path");
                 continue;
@@ -143,7 +143,7 @@ void list_files(const char* path, file_list_t* file_list, int recursive) {
             }
             else {
                 // Si c'est un fichier, l'ajouter à l'index des fichiers
-                file_element* new_elt = malloc(sizeof(file_element));
+                file_element *new_elt = malloc(sizeof(file_element));
                 if (!new_elt) {
                     perror("Memory allocation failed");
                     free(full_path);
@@ -170,10 +170,10 @@ void list_files(const char* path, file_list_t* file_list, int recursive) {
 }
 
 // Fonction pour libérer une liste d'index de fichiers
-void free_file_list(file_list_t* file_list) {
-    file_element* current = file_list->head;
+void free_file_list(file_list_t *file_list) {
+    file_element *current = file_list->head;
     while (current) {
-        file_element* next = current->next;
+        file_element *next = current->next;
         free(current->path);
         free(current);
         current = next;
@@ -183,10 +183,10 @@ void free_file_list(file_list_t* file_list) {
 }
 
 // Fonction pour libérer une liste de logs
-void free_log_list(log_t* logs) {
-    log_element* current = logs->head;
+void free_log_list(log_t *logs) {
+    log_element *current = logs->head;
     while (current) {
-        log_element* next = current->next;
+        log_element *next = current->next;
 
         // Libérer la mémoire allouée pour les champs dynamiques
         if (current->path) {
@@ -208,7 +208,7 @@ void free_log_list(log_t* logs) {
 
 
 // Fonction pour copier un fichier
-int copy_file(const char* source_path, const char* dest_path) {
+int copy_file(const char *source_path, const char *dest_path) {
     // Ouvre le fichier source en mode lecture binaire
     struct stat st;
     if (stat(source_path, &st) == 0) {
@@ -218,14 +218,14 @@ int copy_file(const char* source_path, const char* dest_path) {
         perror("Impossible d'obtenir des informations sur le fichier source");
         return -1;
     }
-    FILE* source_file = fopen(source_path, "rb");
+    FILE *source_file = fopen(source_path, "rb");
     if (source_file == NULL) {
         perror("Erreur lors de l'ouverture du fichier source");
         return -1;
     }
 
     // Ouvre le fichier de destination en mode écriture binaire
-    FILE* dest_file = fopen(dest_path, "wb");
+    FILE *dest_file = fopen(dest_path, "wb");
     if (dest_file == NULL) {
         perror("Erreur lors de l'ouverture du fichier de destination");
         fclose(source_file);

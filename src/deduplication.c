@@ -7,7 +7,7 @@
 #include <dirent.h>
 #include <arpa/inet.h> // For htonl and ntohl
 
-unsigned int hash_md5(unsigned char* md5) {
+unsigned int hash_md5(unsigned char *md5) {
     unsigned int hash = 0;
     for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
         hash = (hash << 5) + hash + md5[i];
@@ -15,18 +15,18 @@ unsigned int hash_md5(unsigned char* md5) {
     return hash % HASH_TABLE_SIZE;
 }
 
-void bytes_to_hex(const unsigned char* bytes, size_t len, unsigned char* hex) {
-    const char* hex_chars = "0123456789abcdef";
+void bytes_to_hex(const unsigned char *bytes, size_t len, unsigned char *hex) {
+    const char *hex_chars = "0123456789abcdef";
     for (size_t i = 0; i < len; i++) {
-        hex[2 * i] = hex_chars[(bytes[i] >> 4) & 0xF];
-        hex[2 * i + 1] = hex_chars[bytes[i] & 0xF];
+        hex[2  *i] = hex_chars[(bytes[i] >> 4) & 0xF];
+        hex[2  *i + 1] = hex_chars[bytes[i] & 0xF];
     }
-    hex[2 * len] = '\0';
+    hex[2  *len] = '\0';
 }
 
-void compute_md5(void* data, size_t len, unsigned char* md5_hex_out) {
+void compute_md5(void *data, size_t len, unsigned char *md5_hex_out) {
     unsigned char md5_out[MD5_DIGEST_LENGTH];
-    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+    EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
     if (mdctx == NULL) {
         fprintf(stderr, "Failed to create EVP_MD_CTX\n");
         exit(EXIT_FAILURE);
@@ -46,7 +46,7 @@ void compute_md5(void* data, size_t len, unsigned char* md5_hex_out) {
     bytes_to_hex(md5_out, MD5_DIGEST_LENGTH, md5_hex_out);
 }
 
-int find_md5(Md5Entry* hash_table[HASH_TABLE_SIZE  ], unsigned char* md5) {
+int find_md5(Md5Entry *hash_table[HASH_TABLE_SIZE  ], unsigned char *md5) {
     unsigned int index = hash_md5(md5);
     while (hash_table[index]->index != -1) {
         if (memcmp(hash_table[index]->md5, md5, MD5_DIGEST_LENGTH  ) == 0) {
@@ -56,8 +56,8 @@ int find_md5(Md5Entry* hash_table[HASH_TABLE_SIZE  ], unsigned char* md5) {
     }
     return -1;
 }
-//sefsefsefsefsef
-void add_md5(Md5Entry* hash_table[HASH_TABLE_SIZE ], unsigned char* md5, int index) {
+
+void add_md5(Md5Entry *hash_table[HASH_TABLE_SIZE ], unsigned char *md5, int index) {
     unsigned int hash = hash_md5(md5);
     while (hash_table[hash]->index != -1) {
         hash = (hash + 1) % HASH_TABLE_SIZE;
@@ -66,7 +66,7 @@ void add_md5(Md5Entry* hash_table[HASH_TABLE_SIZE ], unsigned char* md5, int ind
     hash_table[hash]->index = index;
 }
 
-void init_hash_table(Md5Entry* hash_table[HASH_TABLE_SIZE  ]) {
+void init_hash_table(Md5Entry *hash_table[HASH_TABLE_SIZE  ]) {
     for (size_t i = 0; i < HASH_TABLE_SIZE; i++) {
         hash_table[i] = malloc(sizeof(Md5Entry));
         if (hash_table[i] == NULL) {
@@ -78,7 +78,7 @@ void init_hash_table(Md5Entry* hash_table[HASH_TABLE_SIZE  ]) {
     }
 }
 
-void clean_hash_table(Md5Entry* hash_table[HASH_TABLE_SIZE  ]) {
+void clean_hash_table(Md5Entry *hash_table[HASH_TABLE_SIZE  ]) {
     for (size_t i = 0; i < HASH_TABLE_SIZE; i++) {
         if (hash_table[i]) {
             free(hash_table[i]);
@@ -87,13 +87,13 @@ void clean_hash_table(Md5Entry* hash_table[HASH_TABLE_SIZE  ]) {
 }
 
 
-void deduplicate_file(FILE* file, Chunk** chunks, Md5Entry* hash_table[HASH_TABLE_SIZE  ]) {
+void deduplicate_file(FILE *file, Chunk **chunks, Md5Entry *hash_table[HASH_TABLE_SIZE  ]) {
     int chunk_index = 0;
     unsigned char buffer[CHUNK_SIZE];
     size_t bytes_read;
 
     while ((bytes_read = fread(buffer, 1, CHUNK_SIZE - 1, file)) > 0) {
-        unsigned char md5[MD5_DIGEST_LENGTH * 2 + 1];
+        unsigned char md5[MD5_DIGEST_LENGTH  *2 + 1];
         compute_md5(buffer, bytes_read, md5);
 
         int index = find_md5(hash_table, md5);
@@ -110,7 +110,7 @@ void deduplicate_file(FILE* file, Chunk** chunks, Md5Entry* hash_table[HASH_TABL
                 fprintf(stderr, "Failed to allocate memory for chunk data\n");
                 exit(EXIT_FAILURE);
             }
-            unsigned char* data = (unsigned char*)chunks[chunk_index]->data;
+            unsigned char *data = (unsigned char*)chunks[chunk_index]->data;
             data[0] = 01; // Indiquer que c'est un chunk normal
             memcpy(data + 1, buffer, bytes_read);
             // Remplir les octets restants avec des zéros

@@ -13,9 +13,9 @@
 #include <math.h>
 
 // Générer le nom de sauvegarde avec la date et l'heure actuelle
-void generate_backup_name(char* buffer, size_t size) {
+void generate_backup_name(char *buffer, size_t size) {
     struct timespec ts;
-    struct tm* info;
+    struct tm *info;
     char date_buffer[64];
     char ms_buffer[16];
 
@@ -32,14 +32,14 @@ void generate_backup_name(char* buffer, size_t size) {
 }
 
 // Fonction pour créer une nouvelle sauvegarde complète puis incrémentale
-void create_backup(const char* source_dir, const char* backup_dir) {
+void create_backup(const char *source_dir, const char *backup_dir) {
     char backup_name[128];
     //char log_file_path[1024];
     //char full_backup_path[1024];
 
     // Remove trailing slash from source and backup directories
-    char* source_dir_copy = strdup(source_dir);
-    char* backup_dir_copy = strdup(backup_dir);
+    char *source_dir_copy = strdup(source_dir);
+    char *backup_dir_copy = strdup(backup_dir);
     if (!source_dir_copy || !backup_dir_copy) {
         perror("Memory allocation failed");
         free(source_dir_copy);
@@ -70,7 +70,7 @@ void create_backup(const char* source_dir, const char* backup_dir) {
 
     // Créer le nom du chemin complet
 
-    char* full_backup_path = build_full_path(backup_dir_copy, backup_name);
+    char *full_backup_path = build_full_path(backup_dir_copy, backup_name);
     if (!full_backup_path) {
         perror("Failed to build full path for backup");
         free(source_dir_copy);
@@ -92,15 +92,15 @@ void create_backup(const char* source_dir, const char* backup_dir) {
         // Liste chaînée de tous les fichiers contenus dans la source
         file_list_t tablist = { .head = NULL, .tail = NULL };
         list_files(source_dir_copy, &tablist, 1);
-        file_element* temporary = tablist.head;
+        file_element *temporary = tablist.head;
 
         // Liste de log représentant le contenu du fichier backup_log
         log_t tablog = { .head = NULL, .tail = NULL };
 
-        FILE* log_file = NULL;
+        FILE *log_file = NULL;
         // Créer le fichier .backup_log
 
-        char* log_file_path = build_full_path(backup_dir_copy, ".backup_log");
+        char *log_file_path = build_full_path(backup_dir_copy, ".backup_log");
         log_file = fopen(log_file_path, "w");
         if (!log_file) {
             perror("Erreur lors de la création du fichier .backup_log");
@@ -113,17 +113,17 @@ void create_backup(const char* source_dir, const char* backup_dir) {
         // Pour chaque fichier dans tablist, on liste ses caractéristiques
         while (temporary != NULL) {
             // new_elt est une ligne du fichier backup.log
-            log_element* new_elt = malloc(sizeof(log_element));
+            log_element *new_elt = malloc(sizeof(log_element));
             if (!new_elt) {
                 perror("Memory allocation failed");
                 free(source_dir_copy);
                 free(backup_dir_copy);
                 return;
             }
-            char* file_dest_path = remove_source_dir(source_dir_copy, temporary->path);
-            unsigned char md5_hex[MD5_DIGEST_LENGTH * 2 + 1] = { 0 };
+            char *file_dest_path = remove_source_dir(source_dir_copy, temporary->path);
+            unsigned char md5_hex[MD5_DIGEST_LENGTH  *2 + 1] = { 0 };
             get_md5(temporary->path, md5_hex);
-            char* log_element_path = build_full_path(backup_name, file_dest_path);
+            char *log_element_path = build_full_path(backup_name, file_dest_path);
 
 
             new_elt->path = log_element_path;
@@ -135,7 +135,7 @@ void create_backup(const char* source_dir, const char* backup_dir) {
                 free(backup_dir_copy);
                 return;
             }
-            char* last_date = get_last_modification_date(temporary->path);
+            char *last_date = get_last_modification_date(temporary->path);
             strcpy(new_elt->date, last_date);
             strcpy((char*)new_elt->md5, (char*)md5_hex);
             new_elt->next = NULL;
@@ -159,7 +159,7 @@ void create_backup(const char* source_dir, const char* backup_dir) {
 
 
         // Pointeur sur la liste tablog, pour tout écrire dans backup.log
-        log_element* search_elt = tablog.head;
+        log_element *search_elt = tablog.head;
         while (search_elt != NULL) {
 
             //fprintf(log_file, "%s,%s,%s\n", search_elt->path, search_elt->date, search_elt->md5);
@@ -168,7 +168,7 @@ void create_backup(const char* source_dir, const char* backup_dir) {
             search_elt = search_elt->next;
         }
         fclose(log_file);
-        char* full_backup_log_path = build_full_path(full_backup_path, ".backup_log");
+        char *full_backup_log_path = build_full_path(full_backup_path, ".backup_log");
         if (copy_file(log_file_path, full_backup_log_path) != 0) {
             printf("Le fichier des logs n'a pas été dupliquer");
         };
@@ -180,8 +180,8 @@ void create_backup(const char* source_dir, const char* backup_dir) {
         free_file_list(&tablist);
     }
     else {
-        char* backup_log_path = build_full_path(backup_dir_copy, ".backup_log");
-        char* last_backup_directory = get_latest_backup_dir(backup_dir_copy);
+        char *backup_log_path = build_full_path(backup_dir_copy, ".backup_log");
+        char *last_backup_directory = get_latest_backup_dir(backup_dir_copy);
 
 
         log_t backup_log = read_backup_log(backup_log_path);
@@ -191,16 +191,16 @@ void create_backup(const char* source_dir, const char* backup_dir) {
 
         file_list_t tablist = { .head = NULL, .tail = NULL };
         list_files(source_dir_copy, &tablist, 1);
-        file_element* temporary = tablist.head;
+        file_element *temporary = tablist.head;
 
-        char* last_backup_directory_path = build_full_path(last_backup_directory, ".backup_log");
-        char* last_backup_directory_full_path = build_full_path(backup_dir_copy, last_backup_directory_path);
+        char *last_backup_directory_path = build_full_path(last_backup_directory, ".backup_log");
+        char *last_backup_directory_full_path = build_full_path(backup_dir_copy, last_backup_directory_path);
 
         if (copy_file(backup_log_path, last_backup_directory_full_path) != 0) {
             printf("Le fichier des logs n'a pas été copier");
         };
 
-        FILE* log_file = NULL;
+        FILE *log_file = NULL;
         // Créer le fichier .backup_log
         log_file = fopen(backup_log_path, "w");
         if (!log_file) {
@@ -211,17 +211,17 @@ void create_backup(const char* source_dir, const char* backup_dir) {
         }
 
         while (temporary != NULL) {
-            log_element* new_elt = malloc(sizeof(log_element));
+            log_element *new_elt = malloc(sizeof(log_element));
             if (!new_elt) {
                 perror("Memory allocation failed");
                 free(source_dir_copy);
                 free(backup_dir_copy);
                 return;
             }
-            char* file_dest_path = remove_source_dir(source_dir_copy, temporary->path);
-            unsigned char md5_hex[MD5_DIGEST_LENGTH * 2 + 1] = { 0 };
+            char *file_dest_path = remove_source_dir(source_dir_copy, temporary->path);
+            unsigned char md5_hex[MD5_DIGEST_LENGTH  *2 + 1] = { 0 };
             get_md5(temporary->path, md5_hex);
-            char* log_element_path = build_full_path(backup_name, file_dest_path);
+            char *log_element_path = build_full_path(backup_name, file_dest_path);
 
 
             new_elt->path = log_element_path;
@@ -233,7 +233,7 @@ void create_backup(const char* source_dir, const char* backup_dir) {
                 free(backup_dir_copy);
                 return;
             }
-            char* last_date = get_last_modification_date(temporary->path);
+            char *last_date = get_last_modification_date(temporary->path);
             strcpy(new_elt->date, last_date);
 
             strcpy((char*)new_elt->md5, (char*)md5_hex);
@@ -253,18 +253,16 @@ void create_backup(const char* source_dir, const char* backup_dir) {
             free(last_date);
         }
 
-        log_element* elt_save_log = save_log.head;
+        log_element *elt_save_log = save_log.head;
 
         int new_save = 0;
 
         while (elt_save_log != NULL) {
-            char* file_source_path = cut_after_first_slash(elt_save_log->path);
-            log_element* elt_backup_log = backup_log.head;
+            char *file_source_path = cut_after_first_slash(elt_save_log->path);
+            log_element *elt_backup_log = backup_log.head;
             int find_equivalent = 0;
             while (elt_backup_log != NULL && find_equivalent == 0) {
-                char* file_backup_path = cut_after_first_slash(elt_backup_log->path);
-
-                //printf("%s       %s\n", file_backup_path, file_source_path);
+                char *file_backup_path = cut_after_first_slash(elt_backup_log->path);
                 if (strcmp(file_source_path, file_backup_path) == 0) {
                     find_equivalent = 1;
                     if (strcmp((char*)elt_backup_log->md5, (char*)elt_save_log->md5) != 0) {
@@ -305,11 +303,9 @@ void create_backup(const char* source_dir, const char* backup_dir) {
             }
             free(file_source_path);
             elt_save_log = elt_save_log->next;
-
-            // Penser à copier le fichier backp.log avant de le modifier
         }
 
-        log_element* search_elt = save_log.head;
+        log_element *search_elt = save_log.head;
         while (search_elt != NULL) {
             write_log_element(search_elt, log_file);
             search_elt = search_elt->next;
@@ -317,7 +313,7 @@ void create_backup(const char* source_dir, const char* backup_dir) {
 
         fclose(log_file);
 
-        char* full_backup_log_path = build_full_path(full_backup_path, ".backup_log");
+        char *full_backup_log_path = build_full_path(full_backup_path, ".backup_log");
         if (copy_file(backup_log_path, full_backup_log_path) != 0) {
             printf("Le fichier des logs n'a pas été copier");
         };
@@ -337,15 +333,15 @@ void create_backup(const char* source_dir, const char* backup_dir) {
 }
 
 // Fonction permettant d'enregistrer dans un fichier le tableau de chunk dédupliqué
-void write_backup_file(const char* output_filename, Chunk** chunks, int chunk_count) {
-    FILE* file = fopen(output_filename, "w+b");
+void write_backup_file(const char *output_filename, Chunk **chunks, int chunk_count) {
+    FILE *file = fopen(output_filename, "w+b");
     if (file == NULL) {
         perror("Failed to open output file");
         return;
     }
 
     for (int i = 0; i < chunk_count; i++) {
-        unsigned char* data = (unsigned char*)chunks[i]->data;
+        unsigned char *data = (unsigned char*)chunks[i]->data;
         size_t size = chunks[i]->size; // Utiliser la taille stockée dans le chunk
         // Écrire la taille du chunk dans le fichier
         if (fwrite(data, 1, size, file) != size) {
@@ -360,15 +356,15 @@ void write_backup_file(const char* output_filename, Chunk** chunks, int chunk_co
 
 
 // Fonction implémentant la logique pour la sauvegarde d'un fichier
-void backup_file(const char* filename, const char* source_path, char* full_backup_path) {
+void backup_file(const char *filename, const char *source_path, char *full_backup_path) {
     // Deduplication from the source directory
-    char* filename_source_path = build_full_path(source_path, filename);
+    char *filename_source_path = build_full_path(source_path, filename);
 
     if (!filename_source_path) {
         perror("Failed to build full path for source file");
         return;
     }
-    FILE* source_file = fopen(filename_source_path, "rb");
+    FILE *source_file = fopen(filename_source_path, "rb");
     if (!source_file) {
         perror("Failed to open source file");
         free(filename_source_path);
@@ -383,7 +379,7 @@ void backup_file(const char* filename, const char* source_path, char* full_backu
     // Calculate the number of chunks
     size_t num_chunks = (file_size + 4095) / 4096; // Round up to the nearest chunk
     // Allocate memory for tab_chunk
-    Chunk** tab_chunk = malloc(num_chunks * sizeof(Chunk));
+    Chunk **tab_chunk = malloc(num_chunks  *sizeof(Chunk));
     if (!tab_chunk) {
         perror("Failed to allocate memory for tab_chunk");
         fclose(source_file);
@@ -391,12 +387,12 @@ void backup_file(const char* filename, const char* source_path, char* full_backu
         return;
     }
 
-    Md5Entry* hash_table[HASH_TABLE_SIZE];
+    Md5Entry *hash_table[HASH_TABLE_SIZE];
     init_hash_table(hash_table);
     deduplicate_file(source_file, tab_chunk, hash_table);
 
     // Copy the saved file to the backup directory using the chunk array
-    char* backup_path = build_full_path(full_backup_path, filename);
+    char *backup_path = build_full_path(full_backup_path, filename);
     if (!backup_path) {
         perror("Failed to build full path for backup file");
         free(tab_chunk);
@@ -424,10 +420,10 @@ void backup_file(const char* filename, const char* source_path, char* full_backu
 }
 
 //
-void restore_backup(const char* backup_id, const char* restore_dir) {
+void restore_backup(const char *backup_id, const char *restore_dir) {
     // Vérifier l'accessibilité du répertoire comme dans create_backup 
-    char* backup_id_copy = strdup(backup_id);
-    char* restore_dir_copy = strdup(restore_dir);
+    char *backup_id_copy = strdup(backup_id);
+    char *restore_dir_copy = strdup(restore_dir);
     remove_trailing_slash(backup_id_copy);
     remove_trailing_slash(restore_dir_copy);
     if (!is_directory_accessible(restore_dir)) {
@@ -436,7 +432,7 @@ void restore_backup(const char* backup_id, const char* restore_dir) {
     }
 
     // Lire le backup_log comme dans create_backup
-    char* backup_log_path = build_full_path(backup_id_copy, ".backup_log");
+    char *backup_log_path = build_full_path(backup_id_copy, ".backup_log");
     if (!backup_log_path) {
 
         fprintf(stderr, "Erreur lors de la construction du chemin du fichier log\n");
@@ -444,14 +440,14 @@ void restore_backup(const char* backup_id, const char* restore_dir) {
 
     }
     log_t backup_log = read_backup_log(backup_log_path);
-    log_element* current = backup_log.head;
+    log_element *current = backup_log.head;
 
     while (current) {
         // Construire les chemins comme dans backup_file
-        char* file_path = cut_after_first_slash(current->path);
-        char* dir_backup = remove_after_slash(backup_id_copy);
-        char* source_path = build_full_path(dir_backup, current->path);
-        char* dest_path = build_full_path(restore_dir_copy, file_path);
+        char *file_path = cut_after_first_slash(current->path);
+        char *dir_backup = remove_after_slash(backup_id_copy);
+        char *source_path = build_full_path(dir_backup, current->path);
+        char *dest_path = build_full_path(restore_dir_copy, file_path);
         if (!source_path || !dest_path) {
             free(source_path);
             free(dest_path);
@@ -462,7 +458,7 @@ void restore_backup(const char* backup_id, const char* restore_dir) {
         create_intermediate_directories(dest_path);
 
         // Ouvrir le fichier source en binaire comme dans backup_file
-        FILE* source_file = fopen(source_path, "rb");
+        FILE *source_file = fopen(source_path, "rb");
         if (!source_file) {
             perror("Failed to open source file");
             free(source_path);
@@ -477,7 +473,7 @@ void restore_backup(const char* backup_id, const char* restore_dir) {
         size_t num_chunks = (size_t)ceil((double)file_size / CHUNK_SIZE);
 
         // Allouer les chunks comme dans backup_file
-        Chunk** chunks = malloc(num_chunks * sizeof(Chunk*));
+        Chunk **chunks = malloc(num_chunks  *sizeof(Chunk*));
         if (!chunks) {
             perror("Failed to allocate memory for chunks");
             fclose(source_file);
@@ -487,7 +483,7 @@ void restore_backup(const char* backup_id, const char* restore_dir) {
         }
 
         // Initialiser la table de hash comme dans backup_file
-        Md5Entry* hash_table[HASH_TABLE_SIZE];
+        Md5Entry *hash_table[HASH_TABLE_SIZE];
         init_hash_table(hash_table);
 
         // Restaurer le fichier
@@ -518,8 +514,8 @@ void restore_backup(const char* backup_id, const char* restore_dir) {
     free(backup_id_copy);
     free(restore_dir_copy);
 }
-void write_restored_file(const char* output_filename, Chunk** chunks, int chunk_count) {
-    FILE* file = fopen(output_filename, "wb");
+void write_restored_file(const char *output_filename, Chunk **chunks, int chunk_count) {
+    FILE *file = fopen(output_filename, "wb");
     if (file == NULL) {
         perror("Failed to open output file");
         return;
@@ -544,16 +540,16 @@ void write_restored_file(const char* output_filename, Chunk** chunks, int chunk_
 
 
 
-void list_backups(const char* backup_dir) {
+void list_backups(const char *backup_dir) {
     file_list_t files = { .head = NULL, .tail = NULL };
     list_files(backup_dir, &files, 0);
-    file_element* current = files.head;
+    file_element *current = files.head;
 
     int backup_file = 0;
     int backup_folder = 1;
 
     while (current) {
-        char* file_name = remove_source_dir(backup_dir, current->path);
+        char *file_name = remove_source_dir(backup_dir, current->path);
         if (strcmp(file_name, ".backup_log") == 0) {
             backup_file = 1;
         }
@@ -573,7 +569,7 @@ void list_backups(const char* backup_dir) {
 
     if (backup_file && backup_folder) {
         while (current) {
-            char* file_name = remove_source_dir(backup_dir, current->path);
+            char *file_name = remove_source_dir(backup_dir, current->path);
             if (strcmp(file_name, ".backup_log") != 0) {
                 printf("%d# | %s\n", i, file_name);
                 i++;

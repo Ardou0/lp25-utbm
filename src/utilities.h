@@ -115,8 +115,7 @@ char *cut_after_first_slash(const char *input);
 * @brief Garde uniquement la partie avant le slash.
 *
 * @param input Le chemin d'entrée.
-* @param output Le buffer pour stocker le résultat.
-* Copie la partie avant le premier slash dans output.
+* @return char* La partie avant le premier slash ou une copie de l'entrée
 */
 
 char* remove_after_slash(const char *input);
