@@ -14,7 +14,7 @@ SRC_DIR = src
 SRC_OBJ = tmp
 
 # Liste des fichiers sources et objets
-SOURCES = main.c file_handler.c deduplication.c backup_manager.c utilities.c
+SOURCES = main.c file_handler.c deduplication.c backup_manager.c utilities.c network.c
 OBJECTS = $(patsubst %.c,$(SRC_OBJ)/%.o,$(SOURCES))
 
 # Règle par défaut
