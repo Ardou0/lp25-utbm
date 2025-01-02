@@ -5,6 +5,7 @@
 #include "file_handler.h"
 #include "deduplication.h"
 #include "backup_manager.h"
+#include "network.h"
 
 // Modes possibles
 typedef enum { NONE, BACKUP, RESTORE, LIST_BACKUPS } ProgramMode;
@@ -19,6 +20,9 @@ void print_usage(const char *prog_name) {
     printf("  --dry-run               Test backup or restore without performing actual operations\n");
     printf("  --dest [PATH]           Specify the destination path\n");
     printf("  --source [PATH]         Specify the source path\n");
+    printf("  --s-server [IP]         Specify the source server IP\n");
+    printf("  --d-server [IP]         Specify the destination server IP\n");
+    printf("  --port [PORT]           Specify the port number\n");
     printf("  -v, --verbose           Display verbose output\n");
     printf("  -h, --help              Display this help message\n");
 }
@@ -30,6 +34,9 @@ int main(int argc, char *argv[]) {
     int verbose = 0;
     char *dest_path = NULL;
     char *source_path = NULL;
+    char *s_server = NULL;
+    char *d_server = NULL;
+    int port = 12345; // Port par défaut
 
     // Définition des options longues
     static struct option long_options[] = {
@@ -39,6 +46,9 @@ int main(int argc, char *argv[]) {
         {"dry-run", no_argument, 0, 0},
         {"dest", required_argument, 0, 0},
         {"source", required_argument, 0, 0},
+        {"s-server", required_argument, 0, 0},
+        {"d-server", required_argument, 0, 0},
+        {"port", required_argument, 0, 0},
         {"verbose", no_argument, 0, 'v'},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
@@ -77,6 +87,12 @@ int main(int argc, char *argv[]) {
                 dest_path = optarg;
             } else if (strcmp("source", long_options[option_index].name) == 0) {
                 source_path = optarg;
+            } else if (strcmp("s-server", long_options[option_index].name) == 0) {
+                s_server = optarg;
+            } else if (strcmp("d-server", long_options[option_index].name) == 0) {
+                d_server = optarg;
+            } else if (strcmp("port", long_options[option_index].name) == 0) {
+                port = atoi(optarg);
             }
             break;
         case 'h': // Option -h ou --help
@@ -104,7 +120,22 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
         if (verbose) printf("|Starting backup from '%s' to '%s'\n", source_path, dest_path);
-        create_backup(source_path, dest_path);
+
+        if(s_server || d_server) {
+            if (strcmp(s_server, "0.0.0.0") == 0 || strcmp(d_server, "127.0.0.1") == 0) {
+                // Mode serveur
+                receive_data(port, NULL); // Utiliser le port spécifié
+            } else if (strcmp(s_server, "127.0.0.1") == 0) {
+                // Mode client
+                send_data(d_server, port, "BACKUP", strlen("BACKUP") + 1);
+                receive_data(port, NULL); // Recevoir le fichier .backup_log
+                // Comparer les données et envoyer les fichiers dédupliqués
+                send_data(d_server, port, "EXIT", strlen("EXIT") + 1);
+            }
+        } else {
+            create_backup(source_path, dest_path);
+        }
+
         if (verbose) printf("|Backup done \n");
     } else if (mode == RESTORE) {
         if (source_path == NULL || dest_path == NULL) {
@@ -112,17 +143,36 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
         if (verbose) printf("|Starting restore from '%s' to '%s'\n", source_path, dest_path);
-        restore_backup(source_path, dest_path);
+
+        if(s_server || d_server) {
+            if (strcmp(s_server, "0.0.0.0") == 0 || strcmp(d_server, "127.0.0.1") == 0) {
+                // Mode serveur
+                receive_data(port, NULL); // Utiliser le port spécifié
+            } else if (strcmp(s_server, "127.0.0.1") == 0) {
+                // Mode client
+                send_data(d_server, port, "RESTORE BACKUP_ID", strlen("RESTORE BACKUP_ID") + 1);
+                receive_data(port, NULL); // Recevoir les fichiers restaurés
+            }
+        } else {
+            restore_backup(source_path, dest_path);
+        }
+
         if (verbose) printf("|Restore done \n");
     } else if (mode == LIST_BACKUPS) {
-        if (source_path != NULL) {
-            if (verbose) printf("|Listing backups...\n\n");
-            list_backups(source_path);
-            if (verbose) printf("\n|Pick a backup name to restore from folder.\n");
-            if (verbose) printf("|Remember to add backslashes.\n");
+        if(s_server || d_server) {
+            if (source_path != NULL) {
+                if (verbose) printf("|Listing backups...\n\n");
+                list_backups(source_path);
+                if (verbose) printf("\n|Pick a backup name to restore from folder.\n");
+                if (verbose) printf("|Remember to add backslashes.\n");
+            } else {
+                fprintf(stderr, "Error: --source is required for --list-backups.\n");
+                return EXIT_FAILURE;
+            }
         } else {
-            fprintf(stderr, "Error: --source is required for --list-backups.\n");
-            return EXIT_FAILURE;
+            send_data(d_server, port, "LIST_BACKUP", strlen("LIST_BACKUP") + 1);
+            char list = size_t_to_string(receive_data(port, CHUNK_SIZE));
+            printf("%s\n", list);
         }
     }
 

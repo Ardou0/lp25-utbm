@@ -335,3 +335,18 @@ char *remove_after_slash(const char *input) {
         return output;
     }
 }
+
+char *size_t_to_string(size_t value) {
+    // Allouer de la mémoire pour la chaîne de caractères
+    // La taille maximale d'un size_t en décimal est de 20 caractères (pour un size_t de 64 bits)
+    char *str = malloc(21); // 20 caractères + 1 pour le caractère nul de fin de chaîne
+    if (str == NULL) {
+        perror("Erreur d'allocation de mémoire");
+        return NULL;
+    }
+
+    // Convertir la valeur size_t en chaîne de caractères
+    snprintf(str, 21, "%zu", value);
+
+    return str;
+}
