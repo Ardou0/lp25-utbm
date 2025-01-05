@@ -171,8 +171,6 @@ int main(int argc, char *argv[]) {
             }
         } else {
             send_data(d_server, port, "LIST_BACKUP", strlen("LIST_BACKUP") + 1);
-            char list = size_t_to_string(receive_data(port, CHUNK_SIZE));
-            printf("%s\n", list);
         }
     }
 
